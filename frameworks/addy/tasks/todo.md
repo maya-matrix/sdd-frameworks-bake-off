@@ -116,9 +116,9 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Scope:** M
 
 ### ✅ Checkpoint B: Data entry flow
-- [ ] Full suite green; mypy and ruff clean
-- [ ] Manual run: uvicorn + curl through create group → add 3 members → record expense → list expenses
-- [ ] All validation error codes have tests
+- [x] Full suite green; mypy and ruff clean
+- [x] Manual run: uvicorn + curl through create group → add 3 members → record expense → list expenses
+- [x] All validation error codes have tests
 
 ---
 
