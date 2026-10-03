@@ -1,7 +1,7 @@
 import time
-from collections.abc import Iterator
+from itertools import combinations
 
-from hypothesis import assume, given
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from expense_splitter.settle_up import EXACT_LIMIT, SuggestedTransfer, settle_up
@@ -56,27 +56,28 @@ def balances_summing_to_zero(
     ).map(build)
 
 
-def set_partitions(items: list[int]) -> Iterator[list[list[int]]]:
-    if not items:
-        yield []
-        return
-    first, rest = items[0], items[1:]
-    for partition in set_partitions(rest):
-        for i in range(len(partition)):
-            yield [*partition[:i], [first, *partition[i]], *partition[i + 1 :]]
-        yield [[first], *partition]
+def most_zero_sum_blocks(values: list[int]) -> int:
+    """Independent reference: try every way of carving the values into zero-sum blocks.
+
+    The block holding values[0] is values[0] plus some subset of the rest that cancels
+    it; recurse on what is left. A partition into b zero-sum blocks needs n - b
+    transfers, so the most blocks gives the fewest transfers.
+    """
+    if not values:
+        return 0
+    first, rest = values[0], values[1:]
+    best = 0
+    for size in range(len(rest) + 1):
+        for chosen in combinations(range(len(rest)), size):
+            if first + sum(rest[i] for i in chosen) == 0:
+                remaining = [v for i, v in enumerate(rest) if i not in chosen]
+                best = max(best, 1 + most_zero_sum_blocks(remaining))
+    return best
 
 
 def brute_force_minimum_transfers(balances: list[tuple[str, int]]) -> int:
-    """Independent reference: try every partition of the non-zero Balances into blocks;
-    the best partition with all-zero-sum blocks needs (n - number of blocks) transfers."""
     values = [b for _, b in balances if b != 0]
-    best_blocks = max(
-        len(p)
-        for p in set_partitions(values)
-        if all(sum(block) == 0 for block in p)
-    ) if values else 0
-    return len(values) - best_blocks
+    return len(values) - most_zero_sum_blocks(values)
 
 
 def check_transfers_are_well_formed(
@@ -98,9 +99,11 @@ def test_transfers_clear_every_balance_exactly(balances: list[tuple[str, int]]) 
     assert result.optimal is True
 
 
-@given(balances_summing_to_zero(min_size=1, max_size=8, max_amount=20))
+@settings(deadline=None, max_examples=60)
+@given(balances_summing_to_zero(min_size=1, max_size=EXACT_LIMIT, max_amount=6))
 def test_number_of_transfers_is_the_true_minimum(balances: list[tuple[str, int]]) -> None:
-    # Small amounts make zero-sum subgroups (where greedy can go wrong) common.
+    # Small amounts make zero-sum subgroups (where greedy can go wrong) common. Covers
+    # the whole exact range, up to EXACT_LIMIT non-zero Balances.
     result = settle_up(balances)
 
     assert len(result.transfers) == brute_force_minimum_transfers(balances)
