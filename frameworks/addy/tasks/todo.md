@@ -124,13 +124,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 
 ## Phase 3: Read side + finish
 
-### Task 8: Balances endpoint
+### Task 8: Balances endpoint ✅
 **Description:** `GET /groups/{group_id}/balances` loads members and stored shares, runs `compute_balances` and formats the result.
 
 **Acceptance criteria:**
-- [ ] The 10.00/3 example with payer `a` → `a:"6.66"`, `b:"-3.33"`, `c:"-3.33"`; summing the parsed balances gives 0
-- [ ] Every member is listed in join order, including `"0.00"` and members with no expenses; `currency` is present; unknown group → 404
-- [ ] A multi-expense scenario (several payers and overlapping splits) matches hand-computed values
+- [x] The 10.00/3 example with payer `a` → `a:"6.66"`, `b:"-3.33"`, `c:"-3.33"`; summing the parsed balances gives 0
+- [x] Every member is listed in join order, including `"0.00"` and members with no expenses; `currency` is present; unknown group → 404
+- [x] A multi-expense scenario (several payers and overlapping splits) matches hand-computed values
 
 **Verification:** `uv run pytest tests/test_api.py -k balance`
 

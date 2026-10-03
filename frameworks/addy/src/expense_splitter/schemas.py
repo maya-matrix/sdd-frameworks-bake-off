@@ -76,3 +76,14 @@ class ExpenseResponse(CamelModel):
 
 class ExpenseListResponse(CamelModel):
     expenses: list[ExpenseResponse]
+
+
+class MemberBalance(CamelModel):
+    member_id: str
+    name: str
+    balance: str
+
+
+class BalancesResponse(CamelModel):
+    currency: str
+    balances: list[MemberBalance]

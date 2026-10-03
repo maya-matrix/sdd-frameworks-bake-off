@@ -51,7 +51,7 @@ money ──► split ──► balances ──► settle            (pure core)
 - [ ] All validation error codes covered
 
 ### Phase 3: Read-side endpoints + finish
-- [ ] Task 8: Balances endpoint
+- [x] Task 8: Balances endpoint
 - [ ] Task 9: Settle-up endpoint
 - [ ] Task 10: Restart persistence, README, final quality gates
 

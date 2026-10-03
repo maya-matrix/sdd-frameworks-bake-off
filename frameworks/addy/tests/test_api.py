@@ -308,3 +308,82 @@ def test_list_expenses_of_new_group_is_empty(client: TestClient) -> None:
 
 def test_list_expenses_of_unknown_group_is_not_found(client: TestClient) -> None:
     assert_error(client.get("/groups/missing/expenses"), 404, "GROUP_NOT_FOUND")
+
+
+# --- balances -----------------------------------------------------------------------------
+
+
+def record(client: TestClient, group_id: str, payer: str, amount: str, split: list[str]) -> None:
+    response = client.post(
+        f"/groups/{group_id}/expenses",
+        json={"payerId": payer, "amount": amount, "description": "x", "splitBetween": split},
+    )
+    assert response.status_code == 201, response.text
+
+
+def to_cents(amount: str) -> int:
+    units, _, fraction = amount.lstrip("-").partition(".")
+    cents = int(units) * 100 + int(fraction)
+    return -cents if amount.startswith("-") else cents
+
+
+def test_ten_euros_split_three_ways_balances_to_zero(client: TestClient) -> None:
+    group_id, (a, b, c) = create_group_with_members(client, "Ana", "Bo", "Cy")
+    record(client, group_id, a, "10.00", [a, b, c])
+
+    response = client.get(f"/groups/{group_id}/balances")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "currency": "EUR",
+        "balances": [
+            {"memberId": a, "name": "Ana", "balance": "6.66"},
+            {"memberId": b, "name": "Bo", "balance": "-3.33"},
+            {"memberId": c, "name": "Cy", "balance": "-3.33"},
+        ],
+    }
+    assert sum(to_cents(row["balance"]) for row in response.json()["balances"]) == 0
+
+
+def create_multi_expense_group(client: TestClient) -> tuple[str, list[str]]:
+    group_id, members = create_group_with_members(client, "Ana", "Bo", "Cy", "Di", "Ed")
+    a, b, c, d, _ = members
+    record(client, group_id, a, "100.00", [a, b, c, d])  # 25.00 each
+    record(client, group_id, b, "10.00", [a, c, d])  # 3.34 / 3.33 / 3.33, payer not included
+    record(client, group_id, c, "0.05", [d, b])  # 0.03 / 0.02
+    return group_id, members
+
+
+def test_balances_for_multiple_payers_and_overlapping_splits(client: TestClient) -> None:
+    group_id, _ = create_multi_expense_group(client)
+
+    balances = client.get(f"/groups/{group_id}/balances").json()["balances"]
+
+    assert [(row["name"], row["balance"]) for row in balances] == [
+        ("Ana", "71.66"),  # +100.00 - 25.00 - 3.34
+        ("Bo", "-15.02"),  # +10.00 - 25.00 - 0.02
+        ("Cy", "-28.28"),  # +0.05 - 25.00 - 3.33
+        ("Di", "-28.36"),  # -25.00 - 3.33 - 0.03
+        ("Ed", "0.00"),  # no expenses
+    ]
+
+
+def test_new_group_balances_are_all_zero(client: TestClient) -> None:
+    group_id, _ = create_group_with_members(client, "Ana", "Bo")
+
+    balances = client.get(f"/groups/{group_id}/balances").json()["balances"]
+
+    assert [row["balance"] for row in balances] == ["0.00", "0.00"]
+
+
+def test_balances_use_group_currency(client: TestClient) -> None:
+    group_id = client.post("/groups", json={"name": "Trip", "currency": "USD"}).json()["id"]
+
+    assert client.get(f"/groups/{group_id}/balances").json() == {
+        "currency": "USD",
+        "balances": [],
+    }
+
+
+def test_balances_of_unknown_group_is_not_found(client: TestClient) -> None:
+    assert_error(client.get("/groups/missing/balances"), 404, "GROUP_NOT_FOUND")

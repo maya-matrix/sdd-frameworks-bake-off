@@ -10,15 +10,18 @@ from typing import Annotated
 from fastapi import Depends, FastAPI
 
 from expense_splitter import repository
+from expense_splitter.balances import ExpenseShares, compute_balances
 from expense_splitter.db import connect, init_schema
 from expense_splitter.errors import ApiError, register_error_handlers
 from expense_splitter.money import format_cents, parse_amount
 from expense_splitter.schemas import (
     AddMemberRequest,
+    BalancesResponse,
     CreateGroupRequest,
     ExpenseListResponse,
     ExpenseResponse,
     GroupResponse,
+    MemberBalance,
     MemberResponse,
     RecordExpenseRequest,
     ShareResponse,
@@ -75,6 +78,20 @@ def create_app(db_path: str | Path) -> FastAPI:
             created_at=expense.created_at,
         )
 
+    def member_balances(
+        conn: sqlite3.Connection, group_id: str
+    ) -> list[tuple[repository.Member, int]]:
+        """Each member with their balance in cents, in join order."""
+        members = repository.list_members(conn, group_id)
+        balances = compute_balances(
+            [member.id for member in members],
+            [
+                ExpenseShares(payer_id=e.payer_id, shares=e.shares)
+                for e in repository.list_expenses(conn, group_id)
+            ],
+        )
+        return [(member, balances[member.id]) for member in members]
+
     @app.post("/groups", status_code=201)
     def create_group(body: CreateGroupRequest, conn: Conn) -> GroupResponse:
         group = repository.create_group(conn, name=body.name, currency=body.currency)
@@ -123,6 +140,17 @@ def create_app(db_path: str | Path) -> FastAPI:
         require_group(conn, group_id)
         expenses = repository.list_expenses(conn, group_id)
         return ExpenseListResponse(expenses=[expense_response(e) for e in expenses])
+
+    @app.get("/groups/{group_id}/balances")
+    def get_balances(group_id: str, conn: Conn) -> BalancesResponse:
+        group = require_group(conn, group_id)
+        return BalancesResponse(
+            currency=group.currency,
+            balances=[
+                MemberBalance(member_id=member.id, name=member.name, balance=format_cents(cents))
+                for member, cents in member_balances(conn, group_id)
+            ],
+        )
 
     return app
 
