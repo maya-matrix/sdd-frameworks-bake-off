@@ -8,13 +8,13 @@ The output must be deterministic for the same input. Break ties by a caller-supp
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] With an empty input or all-zero Balances, it returns no transfers and `optimal` is true.
-- [ ] Hypothesis property: applying the returned transfers brings every Balance to exactly zero.
-- [ ] Hypothesis property: every transfer is a positive integer Amount between two distinct Members.
-- [ ] Hypothesis property: for up to about 8 non-zero Balances, the number of transfers equals the minimum found by an independent brute-force reference written in the test suite.
-- [ ] Hypothesis property: above 16 non-zero Balances, `optimal` is false and there are at most n−1 transfers.
-- [ ] Hypothesis property: calling it twice on the same input gives identical output.
-- [ ] A hand-written case where greedy is not optimal returns the true minimum (e.g. Balances {A:+5, B:+3, C:−5, D:−3} → 2 transfers).
-- [ ] A 16-Balance input completes quickly enough for a test suite (well under a second).
+- [x] With an empty input or all-zero Balances, it returns no transfers and `optimal` is true.
+- [x] Hypothesis property: applying the returned transfers brings every Balance to exactly zero.
+- [x] Hypothesis property: every transfer is a positive integer Amount between two distinct Members.
+- [x] Hypothesis property: for up to about 8 non-zero Balances, the number of transfers equals the minimum found by an independent brute-force reference written in the test suite.
+- [x] Hypothesis property: above 16 non-zero Balances, `optimal` is false and there are at most n−1 transfers.
+- [x] Hypothesis property: calling it twice on the same input gives identical output.
+- [x] A hand-written case where greedy is not optimal returns the true minimum (e.g. Balances {−9, −8, +9, −6, −4, +18}: greedy needs 5 transfers, the minimum is 4).
+- [x] A 16-Balance input completes quickly enough for a test suite (well under a second).
