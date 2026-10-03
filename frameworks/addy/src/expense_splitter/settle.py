@@ -10,6 +10,7 @@ round is a handful of whole-set bitwise operations instead of a 2^k * k Python l
 from array import array
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 
 from expense_splitter.money import Cents
 
@@ -43,6 +44,15 @@ def settle_up(
     for group in groups:
         transfers.extend(_settle_group([nonzero[i] for i in group]))
     return transfers
+
+
+@lru_cache(maxsize=1024)
+def settle_up_cached(balances: tuple[tuple[str, Cents], ...]) -> tuple[Transfer, ...]:
+    """`settle_up` memoized on the exact balances.
+
+    Any change to a group's balances is a different key, so cached results are never stale.
+    """
+    return tuple(settle_up(balances))
 
 
 def _settle_group(balances: Sequence[tuple[str, Cents]]) -> list[Transfer]:

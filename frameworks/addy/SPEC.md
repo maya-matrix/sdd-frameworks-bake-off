@@ -90,6 +90,7 @@ Settle-up rules:
 - Transfer count is the true minimum: `k − m`, where `k` = members with non-zero balance and `m` = maximum number of disjoint zero-sum subsets of those balances. Computed with a bitmask DP over subsets (O(2^k · k)); within each zero-sum subset, transfers are produced by greedy debtor/creditor matching (exactly `|subset| − 1` transfers).
 - Practical limit: `k ≤ 20` uses the exact DP. If `k > 20` (only possible in groups larger than 20), fall back to greedy matching over the whole group (≤ `k − 1` transfers, not guaranteed minimal). Documented, not an error.
 - Output is deterministic for the same data (ties broken by member join order).
+- Results are memoized in-process, keyed by the group's exact balance vector (`(memberId, cents)` in join order), LRU-bounded to 1024 entries. Any change to a group's balances is a new key, so a stale result can never be served and no explicit invalidation is needed; repeated reads of an unchanged group cost one balance query, not a recomputation.
 
 ## Data Model (SQLite)
 

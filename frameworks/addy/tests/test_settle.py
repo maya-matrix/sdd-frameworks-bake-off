@@ -5,7 +5,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from expense_splitter.settle import EXACT_LIMIT, Transfer, settle_up
+from expense_splitter.settle import EXACT_LIMIT, Transfer, settle_up, settle_up_cached
 
 
 def apply_transfers(
@@ -172,3 +172,20 @@ def test_exact_limit_finishes_quickly(values: list[int], expected_transfers: int
     assert_valid_settlement(balances, transfers)
     assert len(balances) == EXACT_LIMIT
     assert len(transfers) == expected_transfers
+
+
+def test_cached_settle_up_matches_uncached_result() -> None:
+    balances = (("a", 3), ("b", 5), ("c", -5), ("d", -3))
+
+    assert list(settle_up_cached(balances)) == settle_up(balances)
+
+
+def test_cached_settle_up_reuses_result_for_identical_balances() -> None:
+    balances = (("cache-a", 700), ("cache-b", -300), ("cache-c", -400))
+    first = settle_up_cached(balances)
+    hits_before = settle_up_cached.cache_info().hits
+
+    second = settle_up_cached(tuple(balances))
+
+    assert second is first
+    assert settle_up_cached.cache_info().hits == hits_before + 1

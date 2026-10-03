@@ -66,4 +66,4 @@ curl -s localhost:8000/groups/$G/settle-up   # Bo -> Ana 3.33, Cy -> Ana 3.33
 
 The minimum number of transfers is `k − g`, where `k` is the number of members with a non-zero balance and `g` is the largest number of disjoint groups whose balances each sum to zero (each such group settles internally in `size − 1` transfers). This is computed exactly over all subsets when `k ≤ 20`; above that it falls back to in-order debtor/creditor matching, which still clears every debt exactly but may use more than the minimum (at most `k − 1` transfers).
 
-Cost at the exact limit (20 non-zero balances) is roughly 0.15 s CPU and 20 MB peak memory per call; groups are capped at 50 members (`409 GROUP_FULL`).
+Cost at the exact limit (20 non-zero balances) is roughly 0.15 s CPU and 20 MB peak memory to compute; groups are capped at 50 members (`409 GROUP_FULL`). Results are memoized in-process on the group's exact balances (LRU, 1024 entries), so repeat requests for an unchanged group take ~1 ms, and any new expense or member changes the key, so results are never stale.

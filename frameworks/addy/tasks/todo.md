@@ -196,4 +196,4 @@ Every task also meets the standing Definition of Done: tests are written first a
 - [ ] Unicode case-insensitive member names (`COLLATE NOCASE` is ASCII-only)
 - [ ] SQLite WAL / busy timeout for concurrent writes
 - [ ] `max_length` on `splitBetween`
-- [ ] Cache settle-up per group (each call still costs up to ~0.15 s / 20 MB)
+- [x] Cache settle-up per group: memoized on the exact balance vector (LRU 1024), so no invalidation is needed; HTTP timing at 20 non-zero balances: cold 152 ms → warm 1 ms

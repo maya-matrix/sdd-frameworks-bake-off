@@ -28,7 +28,7 @@ from expense_splitter.schemas import (
     ShareResponse,
     TransferResponse,
 )
-from expense_splitter.settle import settle_up
+from expense_splitter.settle import settle_up_cached
 from expense_splitter.split import split_equally
 
 
@@ -162,14 +162,14 @@ def create_app(db_path: str | Path) -> FastAPI:
     @app.get("/groups/{group_id}/settle-up")
     def get_settle_up(group_id: str, conn: Conn) -> SettleUpResponse:
         group = require_group(conn, group_id)
-        balances = [(member.id, cents) for member, cents in member_balances(conn, group_id)]
+        balances = tuple((member.id, cents) for member, cents in member_balances(conn, group_id))
         return SettleUpResponse(
             currency=group.currency,
             transfers=[
                 TransferResponse(
                     from_member_id=t.from_id, to_member_id=t.to_id, amount=format_cents(t.amount)
                 )
-                for t in settle_up(balances)
+                for t in settle_up_cached(balances)
             ],
         )
 

@@ -3,6 +3,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from expense_splitter.settle import settle_up_cached
+
 
 def assert_error(response: Any, status: int, code: str) -> None:
     assert response.status_code == status, response.text
@@ -466,3 +468,28 @@ def test_settle_up_is_deterministic(client: TestClient) -> None:
 
 def test_settle_up_of_unknown_group_is_not_found(client: TestClient) -> None:
     assert_error(client.get("/groups/missing/settle-up"), 404, "GROUP_NOT_FOUND")
+
+
+def test_repeated_settle_up_of_unchanged_group_is_served_from_cache(client: TestClient) -> None:
+    group_id, _ = create_multi_expense_group(client)
+    first = client.get(f"/groups/{group_id}/settle-up").json()
+    hits_before = settle_up_cached.cache_info().hits
+
+    second = client.get(f"/groups/{group_id}/settle-up").json()
+
+    assert second == first
+    assert settle_up_cached.cache_info().hits == hits_before + 1
+
+
+def test_settle_up_reflects_new_expenses_after_being_cached(client: TestClient) -> None:
+    group_id, (a, b) = create_group_with_members(client, "Ana", "Bo")
+    record(client, group_id, a, "10.00", [b])
+    assert client.get(f"/groups/{group_id}/settle-up").json()["transfers"] == [
+        {"fromMemberId": b, "toMemberId": a, "amount": "10.00"}
+    ]
+
+    record(client, group_id, b, "4.00", [a])
+
+    assert client.get(f"/groups/{group_id}/settle-up").json()["transfers"] == [
+        {"fromMemberId": b, "toMemberId": a, "amount": "6.00"}
+    ]
