@@ -2,7 +2,7 @@
 
 An HTTP JSON API for splitting shared expenses within a group. Members record who paid for what, the API keeps exact per-member balances, and a settle-up endpoint suggests the fewest transfers needed to clear every debt.
 
-Planning artifacts (proposal, specs, design, tasks) live in `openspec/changes/add-expense-splitting-api/`.
+Specs live in `openspec/specs/`; the planning artifacts for each change live under `openspec/changes/` (archived ones in `openspec/changes/archive/`).
 
 ## Setup
 
@@ -30,7 +30,9 @@ npm start            # listens on http://127.0.0.1:3000 (override with PORT / HO
 
 ### Remainder rule
 
-An expense is split equally between the listed members. When the amount does not divide evenly, the leftover cents go one each to the participants who were **added to the group first**, regardless of the order in `splitBetween`. Example: `"10.00"` between Alice, Bob and Carol (added in that order) → `3.34`, `3.33`, `3.33`.
+An equal split (the default) is split equally between the listed members. When the amount does not divide evenly, the leftover cents go one each to the participants who were **added to the group first**, regardless of the order in `splitBetween`. Example: `"10.00"` between Alice, Bob and Carol (added in that order) → `3.34`, `3.33`, `3.33`.
+
+A percentage split uses the **largest-remainder** rule: each share is first rounded down to a whole cent, then the leftover cents go one each to the participants whose discarded fractions were largest, with ties going to whoever was added to the group first. Example: `"10.00"` at `33.33` / `33.33` / `33.34` percent for Alice, Bob and Carol → `3.33`, `3.33`, `3.34`. Carol gets the cent because her exact share (333.4 cents) had the largest fraction, unlike the equal split above, where Alice gets it.
 
 ## Endpoints
 
@@ -83,6 +85,46 @@ Member names must be non-blank and unique within the group (compared case-insens
 ```
 
 The payer does not have to be a participant. The payer and every participant must be members of the group; `splitBetween` must be non-empty with no duplicates; the description must be non-blank. Any violation gives `400` and nothing is recorded.
+
+The response also contains `"splitType": "equal"`.
+
+#### Unequal splits
+
+Set `splitType` to `"exact"` or `"percentage"` and send `splits` instead of `splitBetween`:
+
+```json
+// exact: amounts must sum to exactly the expense amount
+{ "payerId": "<alice>", "amount": "10.00", "description": "Dinner", "splitType": "exact",
+  "splits": [ { "memberId": "<alice>", "amount": "6.00" }, { "memberId": "<bob>", "amount": "2.50" }, { "memberId": "<carol>", "amount": "1.50" } ] }
+
+// percentage: percentages must sum to exactly 100
+{ "payerId": "<alice>", "amount": "10.00", "description": "Taxi", "splitType": "percentage",
+  "splits": [ { "memberId": "<alice>", "percentage": "33.33" }, { "memberId": "<bob>", "percentage": "33.33" }, { "memberId": "<carol>", "percentage": "33.34" } ] }
+```
+
+- Split amounts follow the money format above. Percentages are also **JSON strings** with up to two fraction digits between `"0"` and `"100"`, so `"33.33"` is fine but `33.33` (a number) and `"33.333"` give `400`.
+- Zero entries are allowed (`"0"`). `splits` must be non-empty, list each member at most once, and contain only group members.
+- Sending `splitBetween` with an unequal split, or `splits` with an equal split, gives `400`. So do sums that are off by even one cent or 0.01%.
+- The response has the same fields as an equal split, with `splitType` set, `splitBetween` listing the participants in `splits` order, and `splits` echoed with two fraction digits (`"60"` → `"60.00"`):
+
+```json
+{
+  "id": "…", "groupId": "…", "payerId": "<alice>", "amount": "10.00", "description": "Taxi",
+  "splitType": "percentage",
+  "splitBetween": ["<alice>", "<bob>", "<carol>"],
+  "splits": [
+    { "memberId": "<alice>", "percentage": "33.33" },
+    { "memberId": "<bob>", "percentage": "33.33" },
+    { "memberId": "<carol>", "percentage": "33.34" }
+  ],
+  "shares": [
+    { "memberId": "<alice>", "share": "3.33" },
+    { "memberId": "<bob>", "share": "3.33" },
+    { "memberId": "<carol>", "share": "3.34" }
+  ],
+  "createdAt": "2026-10-03T12:00:00.000Z"
+}
+```
 
 `GET /groups/{groupId}/expenses` returns `{ "expenses": [ … ] }` with the same shape.
 
@@ -154,4 +196,4 @@ curl -s $API/groups/$GID/settle-up | jq .
 - **In-memory storage:** all data is lost when the process stops. Storage sits behind a `Repository` interface (`src/store/memoryStore.ts`) so it can be swapped for a database.
 - **No authentication:** "any member can record an expense" is enforced as "the payer and all participants must be members of the group". There is no notion of who is calling the API.
 - **Single currency** with two minor-unit digits.
-- Not supported: editing or deleting expenses, removing members, unequal or percentage splits, recording settlement payments.
+- Not supported: editing or deleting expenses, removing members, split-by-shares/weights, recording settlement payments.

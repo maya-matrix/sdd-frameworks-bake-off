@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { formatAmount, InvalidAmountError, parseAmount } from "../../src/domain/money.js";
+import {
+  formatAmount,
+  formatPercentage,
+  InvalidAmountError,
+  parseAmount,
+  parsePercentage,
+} from "../../src/domain/money.js";
 
 describe("parseAmount", () => {
   it.each([
@@ -44,5 +50,31 @@ describe("formatAmount", () => {
         expect(parseAmount(formatAmount(cents))).toBe(cents);
       }),
     );
+  });
+});
+
+describe("parsePercentage", () => {
+  it.each([
+    ["33.33", 3333n],
+    ["100", 10000n],
+    ["0", 0n],
+    ["12.5", 1250n],
+  ])("parses %s to %s basis points", (input, expected) => {
+    expect(parsePercentage(input)).toBe(expected);
+  });
+
+  it.each(["100.01", "-5", "33.333", "1e2", "", "abc"])("rejects %j", (input) => {
+    expect(() => parsePercentage(input)).toThrow(InvalidAmountError);
+  });
+});
+
+describe("formatPercentage", () => {
+  it.each([
+    [6000n, "60.00"],
+    [3333n, "33.33"],
+    [10000n, "100.00"],
+    [0n, "0.00"],
+  ])("formats %s as %s", (basisPoints, expected) => {
+    expect(formatPercentage(basisPoints)).toBe(expected);
   });
 });
