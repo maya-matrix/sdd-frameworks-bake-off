@@ -42,7 +42,7 @@ money ──► split ──► balances ──► settle            (pure core)
 
 ### Phase 2: Persistence + API slices
 - [x] Task 4: SQLite schema + repository
-- [ ] Task 5: App factory, error handling, groups endpoints
+- [x] Task 5: App factory, error handling, groups endpoints
 - [ ] Task 6: Add-member endpoint
 - [ ] Task 7: Expense endpoints (record + list)
 

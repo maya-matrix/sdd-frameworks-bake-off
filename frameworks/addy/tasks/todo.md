@@ -73,13 +73,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `src/expense_splitter/db.py`, `src/expense_splitter/repository.py`, `tests/test_repository.py`
 **Scope:** S
 
-### Task 5: App factory, error handling, groups endpoints
+### Task 5: App factory, error handling, groups endpoints ✅
 **Description:** `create_app(db_path)` with the per-request connection dependency; `ApiError` plus global handlers (validation → 400, malformed JSON → 400, `ApiError` → its status); camelCase base model; `POST /groups`, `GET /groups/{group_id}`; `main.app` built from `EXPENSES_DB_PATH`; test fixtures.
 
 **Acceptance criteria:**
-- [ ] `POST /groups {"name":"Trip"}` → 201 with `id`, `name`, `currency:"EUR"`, `members:[]`; a custom `currency:"USD"` is accepted; `"usd"`/`"EURO"` → 400
-- [ ] Empty/whitespace/over-100-char name, missing body and malformed JSON → 400 `{"error":{"code":"VALIDATION_ERROR",...}}`
-- [ ] `GET /groups/{unknown}` → 404 `GROUP_NOT_FOUND`; response keys match the spec exactly
+- [x] `POST /groups {"name":"Trip"}` → 201 with `id`, `name`, `currency:"EUR"`, `members:[]`; a custom `currency:"USD"` is accepted; `"usd"`/`"EURO"` → 400
+- [x] Empty/whitespace/over-100-char name, missing body and malformed JSON → 400 `{"error":{"code":"VALIDATION_ERROR",...}}`
+- [x] `GET /groups/{unknown}` → 404 `GROUP_NOT_FOUND`; response keys match the spec exactly
 
 **Verification:** `uv run pytest tests/test_api.py -k group`; manual: `uv run uvicorn expense_splitter.main:app` + `curl -XPOST localhost:8000/groups -d '{"name":"Trip"}' -H 'content-type: application/json'`
 
