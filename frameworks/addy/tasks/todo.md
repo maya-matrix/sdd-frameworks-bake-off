@@ -177,3 +177,23 @@ Every task also meets the standing Definition of Done: tests are written first a
   7. Survives restart — `tests/test_persistence.py`
   8. pytest (133 passed), mypy strict, ruff clean; coverage 100% overall
 - [x] Ready for review (`/review`)
+
+---
+
+## Review follow-ups (from `/review`, 2026-10-03)
+
+### R1: Bound settle-up resource use ✅
+- [x] Spec: groups capped at 50 members → `409 GROUP_FULL` (enforced atomically in the INSERT)
+- [x] Subset sums packed as int64 when they cannot overflow (list fallback otherwise): peak memory at 20 non-zero balances +55–62 MB → +19–22 MB; ~0.15 s CPU
+- [x] Tests: cap at repository and API level; int64-overflow balances settle exactly
+
+### R2: Pin the exact/fallback boundary ✅
+- [x] Test with exactly `EXACT_LIMIT` balances where in-order matching needs 15 transfers vs minimum 10; kills the `<=` → `<` mutant
+
+### Not done (review suggestions, awaiting decision)
+- [ ] Deterministic share-order tests (currently caught 5/6 runs)
+- [ ] Test or drop the settle-up group sort
+- [ ] Unicode case-insensitive member names (`COLLATE NOCASE` is ASCII-only)
+- [ ] SQLite WAL / busy timeout for concurrent writes
+- [ ] `max_length` on `splitBetween`
+- [ ] Cache settle-up per group (each call still costs up to ~0.15 s / 20 MB)

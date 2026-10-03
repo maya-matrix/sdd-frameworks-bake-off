@@ -119,6 +119,16 @@ def test_large_groups_still_settle_exactly(balances: list[tuple[str, int]]) -> N
     assert_valid_settlement(balances, settle_up(balances))
 
 
+def test_balances_beyond_64_bit_range_settle_exactly() -> None:
+    # Subset sums here overflow int64, so the compact int64 path must not be used.
+    balances = [("a", 2**62), ("b", 2**62), ("c", -(2**63)), ("d", 5), ("e", -5)]
+
+    transfers = settle_up(balances)
+
+    assert_valid_settlement(balances, transfers)
+    assert len(transfers) == 3
+
+
 def test_fallback_above_exact_limit_still_clears_all_debts() -> None:
     values = [i * 37 % 101 + 1 for i in range(EXACT_LIMIT + 4)]
     balances = [(f"m{i}", v) for i, v in enumerate(values)]

@@ -7,12 +7,14 @@ over all 2^k subsets, using Python big ints as bitsets (bit `m` <-> subset mask 
 round is a handful of whole-set bitwise operations instead of a 2^k * k Python loop.
 """
 
+from array import array
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from expense_splitter.money import Cents
 
 EXACT_LIMIT = 20
+_INT64_MAX = 2**63 - 1
 
 
 @dataclass(frozen=True)
@@ -75,10 +77,9 @@ def _max_zero_sum_groups(values: Sequence[Cents]) -> list[list[int]]:
     full = n - 1
     every_mask = (1 << n) - 1
 
-    subset_sums = [0]
-    for value in values:
-        subset_sums += [s + value for s in subset_sums]
+    subset_sums = _subset_sums(values)
     zero_sum = _bitset(mask for mask, s in enumerate(subset_sums) if s == 0 and mask)
+    del subset_sums
 
     # without_bit[i]: bitset of masks that do not contain element i.
     without_bit = []
@@ -120,6 +121,23 @@ def _max_zero_sum_groups(values: Sequence[Cents]) -> list[list[int]]:
 
     group_masks.sort(key=lambda mask: mask & -mask)
     return [[i for i in range(k) if mask >> i & 1] for mask in group_masks]
+
+
+def _subset_sums(values: Sequence[Cents]) -> Sequence[Cents]:
+    """Sum of every subset of `values`, indexed by subset mask.
+
+    Packed as int64 (8 bytes per entry instead of ~36 for a list of ints) whenever no subset
+    sum can overflow; at 2^20 entries that is the difference between ~8 MB and ~40 MB.
+    """
+    if sum(abs(value) for value in values) <= _INT64_MAX:
+        packed = array("q", [0])
+        for value in values:
+            packed.extend(array("q", (s + value for s in packed)))
+        return packed
+    unbounded = [0]
+    for value in values:
+        unbounded += [s + value for s in unbounded]
+    return unbounded
 
 
 def _bitset(positions: Iterable[int]) -> int:
