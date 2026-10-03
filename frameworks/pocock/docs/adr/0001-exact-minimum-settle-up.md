@@ -1,0 +1,3 @@
+# Settle-up computes the true minimum number of transfers, with a greedy fallback
+
+Minimising the number of transfers that clear all Balances is NP-hard: it is equivalent to partitioning the non-zero Balances into as many zero-sum subgroups as possible, since a subgroup of k Members needs k−1 transfers. The common greedy algorithm (pair the largest debtor with the largest creditor) guarantees at most n−1 transfers but is not always optimal. The brief explicitly asks for the *minimum*, so we search subsets exactly when the number of Members with non-zero Balances is small enough to be practical, and fall back to greedy above that threshold. This means the result is guaranteed minimal only below the threshold.
