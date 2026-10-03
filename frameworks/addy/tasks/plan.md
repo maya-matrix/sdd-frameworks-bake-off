@@ -31,7 +31,7 @@ money ──► split ──► balances ──► settle            (pure core)
 ## Task List
 
 ### Phase 1: Domain core (pure, no I/O)
-- [ ] Task 1: Project scaffold + `money` module
+- [x] Task 1: Project scaffold + `money` module
 - [ ] Task 2: Equal split + balances
 - [ ] Task 3: Exact minimum settle-up
 

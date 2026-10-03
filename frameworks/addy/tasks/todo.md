@@ -8,13 +8,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 
 ## Phase 1: Domain core
 
-### Task 1: Project scaffold + `money` module
+### Task 1: Project scaffold + `money` module ✅
 **Description:** Create the uv project (Python 3.13, src layout) with the deps and tool config from the spec, plus `money.py`: `parse_amount(str) -> int` and `format_cents(int) -> str`.
 
 **Acceptance criteria:**
-- [ ] `uv sync` installs fastapi, uvicorn, pydantic, pytest, hypothesis, pytest-cov, httpx, ruff, mypy; `.gitignore` excludes `.venv`, `*.db` and caches
-- [ ] `parse_amount` accepts `"10"`, `"10.5"`, `"10.50"`, `"1000000000.00"`; rejects `"0"`, `"0.00"`, `"-1"`, `"1.234"`, `"1e3"`, `" 1"`, `""`, and values over the max (raises `ValueError`)
-- [ ] `format_cents` outputs `"0.00"`, `"0.01"`, `"-3.33"`, `"1000000000.00"`; hypothesis round-trip `parse(format(c)) == c` for valid `c`
+- [x] `uv sync` installs fastapi, uvicorn, pydantic, pytest, hypothesis, pytest-cov, httpx, ruff, mypy; `.gitignore` excludes `.venv`, `*.db` and caches
+- [x] `parse_amount` accepts `"10"`, `"10.5"`, `"10.50"`, `"1000000000.00"`; rejects `"0"`, `"0.00"`, `"-1"`, `"1.234"`, `"1e3"`, `" 1"`, `""`, and values over the max (raises `ValueError`)
+- [x] `format_cents` outputs `"0.00"`, `"0.01"`, `"-3.33"`, `"1000000000.00"`; hypothesis round-trip `parse(format(c)) == c` for valid `c`
 
 **Verification:** `uv run pytest tests/test_money.py`; `uv run mypy src`; 100% coverage on `money.py`
 
