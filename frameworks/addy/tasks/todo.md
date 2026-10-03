@@ -138,13 +138,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `src/expense_splitter/main.py`, `src/expense_splitter/schemas.py`, `tests/test_api.py`
 **Scope:** S
 
-### Task 9: Settle-up endpoint
+### Task 9: Settle-up endpoint ✅
 **Description:** `GET /groups/{group_id}/settle-up` computes balances (in member join order) and runs `settle_up`, returning `{currency, transfers:[{fromMemberId,toMemberId,amount}]}`.
 
 **Acceptance criteria:**
-- [ ] A group with no expenses, or an already-balanced one, → `"transfers": []`
-- [ ] For the multi-expense scenario, applying the returned transfers to the `/balances` output zeroes everything, and the count matches the known minimum
-- [ ] Unknown group → 404; same data gives the same response
+- [x] A group with no expenses, or an already-balanced one, → `"transfers": []`
+- [x] For the multi-expense scenario, applying the returned transfers to the `/balances` output zeroes everything, and the count matches the known minimum
+- [x] Unknown group → 404; same data gives the same response
 
 **Verification:** `uv run pytest tests/test_api.py -k settle`
 

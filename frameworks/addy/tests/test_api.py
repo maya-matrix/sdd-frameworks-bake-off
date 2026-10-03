@@ -387,3 +387,70 @@ def test_balances_use_group_currency(client: TestClient) -> None:
 
 def test_balances_of_unknown_group_is_not_found(client: TestClient) -> None:
     assert_error(client.get("/groups/missing/balances"), 404, "GROUP_NOT_FOUND")
+
+
+# --- settle-up ----------------------------------------------------------------------------
+
+
+def test_group_without_expenses_needs_no_transfers(client: TestClient) -> None:
+    group_id, _ = create_group_with_members(client, "Ana", "Bo")
+
+    response = client.get(f"/groups/{group_id}/settle-up")
+
+    assert response.status_code == 200
+    assert response.json() == {"currency": "EUR", "transfers": []}
+
+
+def test_already_balanced_group_needs_no_transfers(client: TestClient) -> None:
+    group_id, (a, b) = create_group_with_members(client, "Ana", "Bo")
+    record(client, group_id, a, "12.34", [b])
+    record(client, group_id, b, "12.34", [a])
+
+    assert client.get(f"/groups/{group_id}/settle-up").json()["transfers"] == []
+
+
+def test_settle_up_pairs_debts_with_minimum_transfers(client: TestClient) -> None:
+    # Balances a:+3, b:+5, c:-5, d:-3. In-order matching would need 3 transfers.
+    group_id, (a, b, c, d) = create_group_with_members(client, "Ana", "Bo", "Cy", "Di")
+    record(client, group_id, a, "3.00", [d])
+    record(client, group_id, b, "5.00", [c])
+
+    response = client.get(f"/groups/{group_id}/settle-up")
+
+    assert response.json() == {
+        "currency": "EUR",
+        "transfers": [
+            {"fromMemberId": d, "toMemberId": a, "amount": "3.00"},
+            {"fromMemberId": c, "toMemberId": b, "amount": "5.00"},
+        ],
+    }
+
+
+def test_applying_transfers_clears_every_balance(client: TestClient) -> None:
+    group_id, _ = create_multi_expense_group(client)
+    balances = {
+        row["memberId"]: to_cents(row["balance"])
+        for row in client.get(f"/groups/{group_id}/balances").json()["balances"]
+    }
+
+    transfers = client.get(f"/groups/{group_id}/settle-up").json()["transfers"]
+
+    for transfer in transfers:
+        assert set(transfer) == {"fromMemberId", "toMemberId", "amount"}
+        balances[transfer["fromMemberId"]] += to_cents(transfer["amount"])
+        balances[transfer["toMemberId"]] -= to_cents(transfer["amount"])
+    assert set(balances.values()) == {0}
+    assert len(transfers) == 3  # four non-zero balances, no smaller zero-sum subgroup
+
+
+def test_settle_up_is_deterministic(client: TestClient) -> None:
+    group_id, _ = create_multi_expense_group(client)
+
+    first = client.get(f"/groups/{group_id}/settle-up").json()
+    second = client.get(f"/groups/{group_id}/settle-up").json()
+
+    assert first == second
+
+
+def test_settle_up_of_unknown_group_is_not_found(client: TestClient) -> None:
+    assert_error(client.get("/groups/missing/settle-up"), 404, "GROUP_NOT_FOUND")

@@ -87,3 +87,14 @@ class MemberBalance(CamelModel):
 class BalancesResponse(CamelModel):
     currency: str
     balances: list[MemberBalance]
+
+
+class TransferResponse(CamelModel):
+    from_member_id: str
+    to_member_id: str
+    amount: str
+
+
+class SettleUpResponse(CamelModel):
+    currency: str
+    transfers: list[TransferResponse]

@@ -52,7 +52,7 @@ money ──► split ──► balances ──► settle            (pure core)
 
 ### Phase 3: Read-side endpoints + finish
 - [x] Task 8: Balances endpoint
-- [ ] Task 9: Settle-up endpoint
+- [x] Task 9: Settle-up endpoint
 - [ ] Task 10: Restart persistence, README, final quality gates
 
 ### Checkpoint C: Complete
