@@ -86,6 +86,11 @@ class Repository:
         )
         return member
 
+    def mark_departed(self, member_id: str) -> None:
+        self.conn.execute(
+            "UPDATE members SET departed_at = ? WHERE id = ?", (_now(), member_id)
+        )
+
     def list_members(self, group_id: str) -> list[Member]:
         """All Members of the Group, including Departed Members, in join order."""
         rows = self.conn.execute(

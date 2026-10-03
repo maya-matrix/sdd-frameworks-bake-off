@@ -145,6 +145,10 @@ def create_app(db_path: Path | str) -> FastAPI:
         member = service.add_member(group_id, body.name)
         return MemberOut(id=member.id, name=member.name)
 
+    @app.delete("/groups/{group_id}/members/{member_id}", status_code=204)
+    def remove_member(group_id: str, member_id: str, service: ServiceDep) -> None:
+        service.remove_member(group_id, member_id)
+
     @app.post("/groups/{group_id}/expenses", status_code=201)
     def record_expense(group_id: str, body: RecordExpenseBody, service: ServiceDep) -> ExpenseOut:
         view = service.record_expense(

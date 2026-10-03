@@ -44,6 +44,15 @@ class Service:
         self._require_group(group_id)
         return self._add_member(group_id, name)
 
+    def remove_member(self, group_id: str, member_id: str) -> None:
+        """The Member leaves the Group and becomes a Departed Member."""
+        self._require_group(group_id)
+        if member_id not in self._current_member_ids(group_id):
+            raise NotFound("Member not found")
+        if self._all_balances(group_id)[member_id] != 0:
+            raise Conflict("Only a Member whose Balance is zero can leave the Group")
+        self.repo.mark_departed(member_id)
+
     def _add_member(self, group_id: str, name: str) -> Member:
         name = name.strip()
         if not 1 <= len(name) <= 50:
@@ -108,11 +117,13 @@ class Service:
         self._require_group(group_id)
         if not self.repo.delete_expense(group_id, expense_id):
             raise NotFound("Expense not found")
+        self._check_departed_members_still_settled(group_id)
 
     def delete_payment(self, group_id: str, payment_id: str) -> None:
         self._require_group(group_id)
         if not self.repo.delete_payment(group_id, payment_id):
             raise NotFound("Payment not found")
+        self._check_departed_members_still_settled(group_id)
 
     def balances(self, group_id: str) -> list[tuple[Member, int]]:
         """Every current Member's Balance, in join order. Positive means they are owed."""
@@ -136,6 +147,13 @@ class Service:
             balances[payment.from_id] += payment.amount
             balances[payment.to_id] -= payment.amount
         return balances
+
+    def _check_departed_members_still_settled(self, group_id: str) -> None:
+        """Raising here rolls back the unit of work, undoing the delete."""
+        balances = self._all_balances(group_id)
+        departed = [m for m in self.repo.list_members(group_id) if m.departed_at is not None]
+        if any(balances[m.id] != 0 for m in departed):
+            raise Conflict("This would leave a Departed Member with a non-zero Balance")
 
     def _current_member_ids(self, group_id: str) -> set[str]:
         return {m.id for m in self.repo.list_members(group_id) if m.departed_at is None}

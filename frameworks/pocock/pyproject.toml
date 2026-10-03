@@ -5,7 +5,7 @@ description = "Web API for splitting shared expenses within groups"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.142.2",
+    "fastapi[standard]>=0.142.2",
     "pydantic>=2.13.5",
 ]
 
