@@ -36,13 +36,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `src/expense_splitter/split.py`, `src/expense_splitter/balances.py`, `tests/test_split.py`, `tests/test_balances.py`
 **Scope:** S
 
-### Task 3: Exact minimum settle-up
+### Task 3: Exact minimum settle-up ✅
 **Description:** `settle.settle_up(balances: list[tuple[str, int]]) -> list[Transfer]` where `Transfer(from_id, to_id, amount)`. Uses the bitmask DP for maximum disjoint zero-sum subsets when there are ≤ 20 non-zero balances, then greedy matching inside each subset. Above 20 it falls back to greedy. Deterministic, using the input order as the tiebreak.
 
 **Acceptance criteria:**
-- [ ] Applying the transfers zeroes every balance; all amounts > 0; never debtor→debtor; an all-zero input returns `[]`
-- [ ] Transfer count equals the brute-force minimum (hypothesis, ≤ 8 non-zero balances), including a hand case where naive greedy uses more transfers
-- [ ] 20 non-zero balances finish in < 2s; 25 balances use the greedy fallback and still zero all balances; identical input gives identical output
+- [x] Applying the transfers zeroes every balance; all amounts > 0; never debtor→debtor; an all-zero input returns `[]`
+- [x] Transfer count equals the brute-force minimum (hypothesis, ≤ 8 non-zero balances), including a hand case where naive greedy uses more transfers
+- [x] 20 non-zero balances finish in < 2s; 25 balances use the greedy fallback and still zero all balances; identical input gives identical output
 
 **Verification:** `uv run pytest tests/test_settle.py`; 100% coverage on `settle.py`
 
@@ -51,9 +51,9 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Scope:** S (algorithmically the riskiest task)
 
 ### ✅ Checkpoint A: Domain core
-- [ ] Full suite green; mypy strict and ruff clean
-- [ ] 100% coverage on `money.py`, `split.py`, `settle.py`
-- [ ] **Human review** of the settle-up algorithm before continuing
+- [x] Full suite green; mypy strict and ruff clean
+- [x] 100% coverage on `money.py`, `split.py`, `settle.py`
+- [ ] **Human review** of the settle-up algorithm before continuing (deferred: `/build auto` run; flagged in summary)
 
 ---
 
