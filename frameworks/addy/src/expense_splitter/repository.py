@@ -9,8 +9,14 @@ from datetime import UTC, datetime
 from expense_splitter.money import Cents
 from expense_splitter.split import Share
 
+MAX_MEMBERS = 50
+
 
 class DuplicateMemberError(Exception):
+    pass
+
+
+class GroupFullError(Exception):
     pass
 
 
@@ -62,20 +68,26 @@ def get_group(conn: sqlite3.Connection, group_id: str) -> Group | None:
 
 
 def add_member(conn: sqlite3.Connection, group_id: str, name: str) -> Member:
+    """Add a member at the end of the join order; the size cap is checked in the same statement."""
     member = Member(id=_new_id(), name=name)
     try:
         with conn:
-            conn.execute(
+            inserted = conn.execute(
                 """
                 INSERT INTO members (id, group_id, name, position)
-                SELECT ?, ?, ?, COALESCE(MAX(position), 0) + 1 FROM members WHERE group_id = ?
+                SELECT ?, ?, ?, next_position FROM (
+                    SELECT COALESCE(MAX(position), 0) + 1 AS next_position, COUNT(*) AS size
+                    FROM members WHERE group_id = ?
+                ) WHERE size < ?
                 """,
-                (member.id, group_id, name, group_id),
-            )
+                (member.id, group_id, name, group_id, MAX_MEMBERS),
+            ).rowcount
     except sqlite3.IntegrityError as error:
         if "UNIQUE" in str(error):
             raise DuplicateMemberError(name) from error
         raise
+    if inserted == 0:
+        raise GroupFullError(group_id)
     return member
 
 

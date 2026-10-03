@@ -139,6 +139,18 @@ def test_add_member_rejects_invalid_name(client: TestClient, body: dict[str, obj
     assert_error(client.post(f"/groups/{group_id}/members", json=body), 400, "VALIDATION_ERROR")
 
 
+def test_add_member_beyond_fifty_is_rejected_as_group_full(client: TestClient) -> None:
+    group_id = create_group(client)
+    for i in range(50):
+        added = client.post(f"/groups/{group_id}/members", json={"name": f"member {i}"})
+        assert added.status_code == 201
+
+    response = client.post(f"/groups/{group_id}/members", json={"name": "one too many"})
+
+    assert_error(response, 409, "GROUP_FULL")
+    assert len(client.get(f"/groups/{group_id}").json()["members"]) == 50
+
+
 def test_add_member_to_unknown_group_is_not_found(client: TestClient) -> None:
     response = client.post("/groups/missing/members", json={"name": "Ana"})
 

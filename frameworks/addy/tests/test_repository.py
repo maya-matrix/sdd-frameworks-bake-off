@@ -126,3 +126,23 @@ def test_data_persists_across_connections(tmp_path: Path) -> None:
 
     assert repository.get_group(second, group.id) == group
     second.close()
+
+
+def test_group_accepts_members_up_to_the_cap(conn: sqlite3.Connection) -> None:
+    group = repository.create_group(conn, name="Trip", currency="EUR")
+
+    for i in range(repository.MAX_MEMBERS):
+        repository.add_member(conn, group.id, f"member {i}")
+
+    assert len(repository.list_members(conn, group.id)) == repository.MAX_MEMBERS
+
+
+def test_group_rejects_members_beyond_the_cap(conn: sqlite3.Connection) -> None:
+    group = repository.create_group(conn, name="Trip", currency="EUR")
+    for i in range(repository.MAX_MEMBERS):
+        repository.add_member(conn, group.id, f"member {i}")
+
+    with pytest.raises(repository.GroupFullError):
+        repository.add_member(conn, group.id, "one too many")
+
+    assert len(repository.list_members(conn, group.id)) == repository.MAX_MEMBERS

@@ -113,6 +113,10 @@ def create_app(db_path: str | Path) -> FastAPI:
             raise ApiError(
                 409, "DUPLICATE_MEMBER", f"a member named {body.name!r} already exists"
             ) from None
+        except repository.GroupFullError:
+            raise ApiError(
+                409, "GROUP_FULL", f"a group can have at most {repository.MAX_MEMBERS} members"
+            ) from None
         return MemberResponse(id=member.id, name=member.name)
 
     @app.post("/groups/{group_id}/expenses", status_code=201)

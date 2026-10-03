@@ -11,7 +11,7 @@ Status: **APPROVED** (2026-10-03). Decisions: no auth, SQLite, exact minimum set
 5. **Append-only for v1:** no editing/deleting expenses, no removing members, no recording settlements as payments.
 6. **Remainder cents in equal splits** go one each to the first participants in the order the IDs appear in `splitBetween`. (€10.00 / 3 → 3.34, 3.33, 3.33.)
 7. **Settle-up returns the exact minimum number of transfers.**
-8. Groups are modest in size (≤ 50 members).
+8. Groups hold **at most 50 members**, enforced: adding a 51st member → `409 GROUP_FULL`. This bounds settle-up cost, which is exponential in the number of non-zero balances (see Settle-up rules).
 
 ## Objective
 
@@ -70,6 +70,7 @@ Shapes:
 
 Validation rules:
 - `name` (group, member): non-empty after trim, ≤ 100 chars. Member names unique within a group, case-insensitive → `409 DUPLICATE_MEMBER`.
+- A group already holding 50 members rejects new members → `409 GROUP_FULL` (checked atomically with the insert).
 - `currency`: 3 uppercase letters.
 - `amount`: JSON string matching `^\d+(\.\d{1,2})?$`, > 0, ≤ `"1000000000.00"`. JSON numbers are rejected (`400 VALIDATION_ERROR`).
 - `description`: non-empty after trim, ≤ 200 chars.
@@ -195,7 +196,7 @@ def split_equally(total: Cents, member_ids: Sequence[str]) -> dict[str, Cents]:
 3. For any sequence of valid expenses, Σ balances = 0 and each expense's shares sum to its amount (property tests pass).
 4. Settle-up transfers, when applied, zero every balance exactly; transfer count equals the brute-force minimum on randomized inputs with ≤ 8 non-zero balances, including cases where naive greedy needs more transfers.
 5. Settle-up on a fully settled group returns `"transfers": []`.
-6. Invalid input (non-member payer, empty split, duplicate split member, numeric amount, 3-decimal amount, unknown group, duplicate member name) returns the documented 4xx error.
+6. Invalid input (non-member payer, empty split, duplicate split member, numeric amount, 3-decimal amount, unknown group, duplicate member name, member beyond the 50-member cap) returns the documented 4xx error.
 7. Data survives an app restart (same DB file).
 8. `uv run pytest`, `uv run mypy src`, and `uv run ruff check .` all pass; coverage meets targets.
 
