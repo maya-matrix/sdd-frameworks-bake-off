@@ -36,8 +36,8 @@ money ──► split ──► balances ──► settle            (pure core)
 - [x] Task 3: Exact minimum settle-up
 
 ### Checkpoint A: Domain core
-- [ ] `uv run pytest` green, `uv run mypy src` and `uv run ruff check .` clean
-- [ ] 100% coverage on `money.py`, `split.py`, `settle.py`
+- [x] `uv run pytest` green, `uv run mypy src` and `uv run ruff check .` clean
+- [x] 100% coverage on `money.py`, `split.py`, `settle.py`
 - [ ] Human review of the settle-up algorithm before building the API
 
 ### Phase 2: Persistence + API slices
@@ -47,18 +47,18 @@ money ──► split ──► balances ──► settle            (pure core)
 - [x] Task 7: Expense endpoints (record + list)
 
 ### Checkpoint B: Data entry flow
-- [ ] Create group → add members → record expenses → list them, via `TestClient` and manually via uvicorn + curl
-- [ ] All validation error codes covered
+- [x] Create group → add members → record expenses → list them, via `TestClient` and manually via uvicorn + curl
+- [x] All validation error codes covered
 
 ### Phase 3: Read-side endpoints + finish
 - [x] Task 8: Balances endpoint
 - [x] Task 9: Settle-up endpoint
-- [ ] Task 10: Restart persistence, README, final quality gates
+- [x] Task 10: Restart persistence, README, final quality gates
 
 ### Checkpoint C: Complete
-- [ ] All 8 spec Success Criteria verified
-- [ ] Coverage ≥ 90% overall; 100% on money/split/settle
-- [ ] Ready for review
+- [x] All 8 spec Success Criteria verified
+- [x] Coverage ≥ 90% overall; 100% on money/split/settle (actual: 100% overall)
+- [x] Ready for review
 
 ## Parallelization
 

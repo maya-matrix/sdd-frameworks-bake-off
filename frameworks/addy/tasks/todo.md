@@ -152,13 +152,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `src/expense_splitter/main.py`, `src/expense_splitter/schemas.py`, `tests/test_api.py`
 **Scope:** S
 
-### Task 10: Restart persistence, README, final quality gates
+### Task 10: Restart persistence, README, final quality gates ✅
 **Description:** Prove data survives an app restart, write a short README (setup, commands, API summary with curl examples), and close any coverage gaps.
 
 **Acceptance criteria:**
-- [ ] Test: two `create_app(same_path)` instances; data written by the first is read by the second (group, members, expenses, balances)
-- [ ] `uv run pytest --cov=expense_splitter --cov-report=term-missing` ≥ 90% overall and 100% on money/split/settle
-- [ ] `uv run mypy src`, `uv run ruff check .` and `uv run ruff format --check .` are clean; the README commands work as written
+- [x] Test: two `create_app(same_path)` instances; data written by the first is read by the second (group, members, expenses, balances)
+- [x] `uv run pytest --cov=expense_splitter --cov-report=term-missing` ≥ 90% overall and 100% on money/split/settle
+- [x] `uv run mypy src`, `uv run ruff check .` and `uv run ruff format --check .` are clean; the README commands work as written
 
 **Verification:** run all commands from the spec's Commands section; walk the 8 spec Success Criteria
 
@@ -167,5 +167,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Scope:** S
 
 ### ✅ Checkpoint C: Complete
-- [ ] All 8 spec Success Criteria checked off with evidence
-- [ ] Ready for review (`/review`)
+- [x] All 8 spec Success Criteria checked off with evidence:
+  1. Endpoints + exact camelCase key sets — `tests/test_api.py` (`set(body) == {...}` assertions)
+  2. €10.00 / 3 → 3.34/3.33/3.33, balances sum 0 — `test_record_expense_splits_equally…`, `test_ten_euros_split_three_ways…`
+  3. Shares sum to amount, Σ balances = 0 — hypothesis tests in `test_split.py`, `test_balances.py`
+  4. Settle-up zeroes balances with brute-force-minimal count — `test_transfer_count_is_minimal`, `test_finds_fewer_transfers_than_naive_matching`
+  5. Settled group → `[]` — `test_already_balanced_group_needs_no_transfers`
+  6. Documented 4xx for invalid input — validation/UNKNOWN_MEMBER/GROUP_NOT_FOUND/DUPLICATE_MEMBER tests
+  7. Survives restart — `tests/test_persistence.py`
+  8. pytest (133 passed), mypy strict, ruff clean; coverage 100% overall
+- [x] Ready for review (`/review`)
