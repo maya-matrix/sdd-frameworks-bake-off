@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -70,3 +72,29 @@ def test_initial_member_names_are_validated(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_concurrent_adds_of_the_same_name_conflict_cleanly(client: TestClient) -> None:
+    group = create_group(client, [])
+
+    def add(_: int) -> int:
+        return client.post(f"/groups/{group['id']}/members", json={"name": "Alice"}).status_code
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        statuses = list(pool.map(add, range(32)))
+
+    assert sorted(set(statuses)) == [201, 409]
+    assert statuses.count(201) == 1
+
+
+def test_concurrent_adds_of_different_names_all_succeed(client: TestClient) -> None:
+    group = create_group(client, [])
+
+    def add(i: int) -> int:
+        return client.post(f"/groups/{group['id']}/members", json={"name": f"M{i}"}).status_code
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        statuses = list(pool.map(add, range(32)))
+
+    assert statuses == [201] * 32
+    assert len(client.get(f"/groups/{group['id']}").json()["members"]) == 32

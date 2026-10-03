@@ -52,17 +52,30 @@ CREATE TABLE IF NOT EXISTS payments (
 class Database:
     def __init__(self, path: Path | str) -> None:
         self.path = str(path)
-        with self.connect() as conn:
+        conn = sqlite3.connect(self.path)
+        try:
             conn.executescript(SCHEMA)
+        finally:
+            conn.close()
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
-        """One connection per unit of work; commits on success, rolls back on error."""
-        conn = sqlite3.connect(self.path)
+        """One connection per unit of work; commits on success, rolls back on error.
+
+        The transaction takes SQLite's write lock up front (BEGIN IMMEDIATE), so units
+        of work are serialised and check-then-insert rules (unique Member names, join
+        order) cannot race. Concurrent callers wait for the lock up to `timeout`.
+        """
+        conn = sqlite3.connect(self.path, timeout=30, isolation_level=None)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         try:
-            with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
                 yield conn
+            except BaseException:
+                conn.execute("ROLLBACK")
+                raise
+            conn.execute("COMMIT")
         finally:
             conn.close()
