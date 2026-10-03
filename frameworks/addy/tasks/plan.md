@@ -41,7 +41,7 @@ money ──► split ──► balances ──► settle            (pure core)
 - [ ] Human review of the settle-up algorithm before building the API
 
 ### Phase 2: Persistence + API slices
-- [ ] Task 4: SQLite schema + repository
+- [x] Task 4: SQLite schema + repository
 - [ ] Task 5: App factory, error handling, groups endpoints
 - [ ] Task 6: Add-member endpoint
 - [ ] Task 7: Expense endpoints (record + list)

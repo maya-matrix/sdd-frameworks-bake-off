@@ -59,13 +59,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 
 ## Phase 2: Persistence + API slices
 
-### Task 4: SQLite schema + repository
+### Task 4: SQLite schema + repository ✅
 **Description:** `db.py` (`connect(path)` with FK pragma and `Row` factory, `init_schema(conn)` using the spec DDL) and `repository.py` with functions for: create/get group, add/list members (ordered by `position`), insert expense with shares in one transaction, list expenses with shares (ordered by creation, shares by `position`).
 
 **Acceptance criteria:**
-- [ ] Round-trip tests against a temp DB file for each repository function; all money columns are `INTEGER` cents
-- [ ] A duplicate member name (case-insensitive) raises a distinct `DuplicateMemberError`; an FK violation raises `sqlite3.IntegrityError`
-- [ ] A failing share insert rolls back the expense row (no partial expense)
+- [x] Round-trip tests against a temp DB file for each repository function; all money columns are `INTEGER` cents
+- [x] A duplicate member name (case-insensitive) raises a distinct `DuplicateMemberError`; an FK violation raises `sqlite3.IntegrityError`
+- [x] A failing share insert rolls back the expense row (no partial expense)
 
 **Verification:** `uv run pytest tests/test_repository.py`
 
