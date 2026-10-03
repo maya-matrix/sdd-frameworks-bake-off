@@ -101,13 +101,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `src/expense_splitter/main.py`, `src/expense_splitter/schemas.py`, `tests/test_api.py`
 **Scope:** S
 
-### Task 7: Expense endpoints (record + list)
+### Task 7: Expense endpoints (record + list) ✅
 **Description:** `POST /groups/{group_id}/expenses` validates the input, runs `split_equally` and persists the expense and its shares; `GET /groups/{group_id}/expenses` lists expenses oldest first with `shares`.
 
 **Acceptance criteria:**
-- [ ] €10.00 among [a,b,c] → 201 with `splitType:"equal"`, shares `"3.34","3.33","3.33"` in request order, `amount:"10.00"`, `createdAt` in ISO-8601 UTC
-- [ ] 400s: numeric `amount` (`10.5`), `"1.234"`, `"0"`, empty description, empty or duplicate `splitBetween`; a non-member payer or split member (including a member of *another* group) → 400 `UNKNOWN_MEMBER`; unknown group → 404
-- [ ] The list endpoint returns `{"expenses":[...]}` in creation order with exact camelCase keys; the payer doesn't have to be in the split
+- [x] €10.00 among [a,b,c] → 201 with `splitType:"equal"`, shares `"3.34","3.33","3.33"` in request order, `amount:"10.00"`, `createdAt` in ISO-8601 UTC
+- [x] 400s: numeric `amount` (`10.5`), `"1.234"`, `"0"`, empty description, empty or duplicate `splitBetween`; a non-member payer or split member (including a member of *another* group) → 400 `UNKNOWN_MEMBER`; unknown group → 404
+- [x] The list endpoint returns `{"expenses":[...]}` in creation order with exact camelCase keys; the payer doesn't have to be in the split
 
 **Verification:** `uv run pytest tests/test_api.py -k expense`
 

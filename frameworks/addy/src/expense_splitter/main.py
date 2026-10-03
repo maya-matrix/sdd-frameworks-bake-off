@@ -12,12 +12,18 @@ from fastapi import Depends, FastAPI
 from expense_splitter import repository
 from expense_splitter.db import connect, init_schema
 from expense_splitter.errors import ApiError, register_error_handlers
+from expense_splitter.money import format_cents, parse_amount
 from expense_splitter.schemas import (
     AddMemberRequest,
     CreateGroupRequest,
+    ExpenseListResponse,
+    ExpenseResponse,
     GroupResponse,
     MemberResponse,
+    RecordExpenseRequest,
+    ShareResponse,
 )
+from expense_splitter.split import split_equally
 
 
 def create_app(db_path: str | Path) -> FastAPI:
@@ -55,6 +61,20 @@ def create_app(db_path: str | Path) -> FastAPI:
             members=[MemberResponse(id=m.id, name=m.name) for m in members],
         )
 
+    def expense_response(expense: repository.Expense) -> ExpenseResponse:
+        return ExpenseResponse(
+            id=expense.id,
+            payer_id=expense.payer_id,
+            amount=format_cents(expense.amount_cents),
+            description=expense.description,
+            split_type=expense.split_type,
+            shares=[
+                ShareResponse(member_id=member_id, amount=format_cents(cents))
+                for member_id, cents in expense.shares
+            ],
+            created_at=expense.created_at,
+        )
+
     @app.post("/groups", status_code=201)
     def create_group(body: CreateGroupRequest, conn: Conn) -> GroupResponse:
         group = repository.create_group(conn, name=body.name, currency=body.currency)
@@ -74,6 +94,35 @@ def create_app(db_path: str | Path) -> FastAPI:
                 409, "DUPLICATE_MEMBER", f"a member named {body.name!r} already exists"
             ) from None
         return MemberResponse(id=member.id, name=member.name)
+
+    @app.post("/groups/{group_id}/expenses", status_code=201)
+    def record_expense(group_id: str, body: RecordExpenseRequest, conn: Conn) -> ExpenseResponse:
+        require_group(conn, group_id)
+        member_ids = {member.id for member in repository.list_members(conn, group_id)}
+        unknown = [
+            member_id
+            for member_id in [body.payer_id, *body.split_between]
+            if member_id not in member_ids
+        ]
+        if unknown:
+            raise ApiError(400, "UNKNOWN_MEMBER", f"not a member of this group: {unknown[0]}")
+        amount_cents = parse_amount(body.amount)
+        expense = repository.add_expense(
+            conn,
+            group_id=group_id,
+            payer_id=body.payer_id,
+            amount_cents=amount_cents,
+            description=body.description,
+            split_type="equal",
+            shares=split_equally(amount_cents, body.split_between),
+        )
+        return expense_response(expense)
+
+    @app.get("/groups/{group_id}/expenses")
+    def list_expenses(group_id: str, conn: Conn) -> ExpenseListResponse:
+        require_group(conn, group_id)
+        expenses = repository.list_expenses(conn, group_id)
+        return ExpenseListResponse(expenses=[expense_response(e) for e in expenses])
 
     return app
 

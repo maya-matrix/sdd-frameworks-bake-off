@@ -44,7 +44,7 @@ money ──► split ──► balances ──► settle            (pure core)
 - [x] Task 4: SQLite schema + repository
 - [x] Task 5: App factory, error handling, groups endpoints
 - [x] Task 6: Add-member endpoint
-- [ ] Task 7: Expense endpoints (record + list)
+- [x] Task 7: Expense endpoints (record + list)
 
 ### Checkpoint B: Data entry flow
 - [ ] Create group → add members → record expenses → list them, via `TestClient` and manually via uvicorn + curl
