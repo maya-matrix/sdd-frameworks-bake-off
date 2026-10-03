@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from expense_splitter.errors import Conflict, Invalid, NotFound
 from expense_splitter.money import MAX_AMOUNT, SUPPORTED_CURRENCIES, split_equally
 from expense_splitter.repository import Expense, Group, Member, Payment, Repository
+from expense_splitter.settle_up import SettleUpResult, settle_up
 
 
 @dataclass(frozen=True)
@@ -110,6 +111,9 @@ class Service:
         return [
             (m, balances[m.id]) for m in self.repo.list_members(group_id) if m.departed_at is None
         ]
+
+    def settle_up(self, group_id: str) -> SettleUpResult:
+        return settle_up([(m.id, balance) for m, balance in self.balances(group_id)])
 
     def _all_balances(self, group_id: str) -> dict[str, int]:
         """Balances of every Member, including Departed Members."""

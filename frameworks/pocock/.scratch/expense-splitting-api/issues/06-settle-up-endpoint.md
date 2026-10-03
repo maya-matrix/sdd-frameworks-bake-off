@@ -4,12 +4,12 @@
 
 **Blocked by:** 02 (Settle-up algorithm), 05 (Payments)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `GET /groups/{id}/settle-up` returns `{transfers: [{from_id, to_id, amount}], optimal}`.
-- [ ] A settled Group, or one with no Expenses, returns an empty `transfers` list with `optimal: true`.
-- [ ] End to end: record several Expenses, take the Settle-up, record each Suggested Transfer as a Payment, and every Balance comes out at exactly 0.
-- [ ] A scenario where greedy is not optimal, built from real Expenses, returns the minimum number of transfers.
-- [ ] A Group with more than 16 Members holding non-zero Balances returns `optimal: false`, and its transfers still clear every Balance.
-- [ ] The same state always gives identical output.
-- [ ] An unknown Group returns 404.
+- [x] `GET /groups/{id}/settle-up` returns `{transfers: [{from_id, to_id, amount}], optimal}`.
+- [x] A settled Group, or one with no Expenses, returns an empty `transfers` list with `optimal: true`.
+- [x] End to end: record several Expenses, take the Settle-up, record each Suggested Transfer as a Payment, and every Balance comes out at exactly 0.
+- [x] A scenario where greedy is not optimal, built from real Expenses, returns the minimum number of transfers.
+- [x] A Group with more than 16 Members holding non-zero Balances returns `optimal: false`, and its transfers still clear every Balance.
+- [x] The same state always gives identical output.
+- [x] An unknown Group returns 404.

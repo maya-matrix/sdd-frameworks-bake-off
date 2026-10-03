@@ -104,6 +104,17 @@ class PaymentOut(BaseModel):
         )
 
 
+class TransferOut(BaseModel):
+    from_id: str
+    to_id: str
+    amount: int
+
+
+class SettleUpOut(BaseModel):
+    transfers: list[TransferOut]
+    optimal: bool
+
+
 _STATUS = {NotFound: 404, Invalid: 422, Conflict: 409}
 
 
@@ -161,5 +172,16 @@ def create_app(db_path: Path | str) -> FastAPI:
             BalanceOut(member_id=m.id, name=m.name, balance=b)
             for m, b in service.balances(group_id)
         ]
+
+    @app.get("/groups/{group_id}/settle-up")
+    def settle_up(group_id: str, service: ServiceDep) -> SettleUpOut:
+        result = service.settle_up(group_id)
+        return SettleUpOut(
+            transfers=[
+                TransferOut(from_id=t.from_id, to_id=t.to_id, amount=t.amount)
+                for t in result.transfers
+            ],
+            optimal=result.optimal,
+        )
 
     return app
