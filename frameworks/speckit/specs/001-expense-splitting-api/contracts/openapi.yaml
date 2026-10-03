@@ -1,0 +1,254 @@
+openapi: 3.1.0
+info:
+  title: SplitIt Expense Splitting API
+  version: 1.0.0
+  description: |
+    All money values are strings with exactly two decimals (e.g. "10.00", "-3.33").
+    JSON numbers are rejected for money fields. All errors use the Error schema.
+paths:
+  /groups:
+    post:
+      summary: Create a group, optionally with initial members (FR-001, FR-003, SC-004)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGroup' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '409':
+          description: Two initial member names are equal (case-insensitive)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /groups/{group_id}:
+    parameters: [{ $ref: '#/components/parameters/GroupId' }]
+    get:
+      summary: Get a group with its members (FR-002)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups/{group_id}/members:
+    parameters: [{ $ref: '#/components/parameters/GroupId' }]
+    post:
+      summary: Add a member (FR-003)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMember' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Member name already used in this group (case-insensitive)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /groups/{group_id}/expenses:
+    parameters: [{ $ref: '#/components/parameters/GroupId' }]
+    post:
+      summary: Record an expense split equally (FR-004, FR-005)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateExpense' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Expense' }
+        '404':
+          description: Group not found, or payer/participant is not a member of the group
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    get:
+      summary: List expenses in recording order (FR-006)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [expenses]
+                properties:
+                  expenses:
+                    type: array
+                    items: { $ref: '#/components/schemas/Expense' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups/{group_id}/balances:
+    parameters: [{ $ref: '#/components/parameters/GroupId' }]
+    get:
+      summary: Net balance per member; positive = is owed, negative = owes (FR-007)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balances]
+                properties:
+                  balances:
+                    type: array
+                    items: { $ref: '#/components/schemas/Balance' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /groups/{group_id}/settle-up:
+    parameters: [{ $ref: '#/components/parameters/GroupId' }]
+    get:
+      summary: Read-only minimum-transfer settlement suggestion (FR-008..FR-010)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [transfers]
+                properties:
+                  transfers:
+                    type: array
+                    items: { $ref: '#/components/schemas/Transfer' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  parameters:
+    GroupId:
+      name: group_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    NotFound:
+      description: Resource not found (code "not_found")
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Invalid request (code "validation_error"); nothing is stored
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Money:
+      type: string
+      pattern: '^-?(0|[1-9][0-9]*)\.[0-9]{2}$'
+      examples: ['10.00', '-3.33']
+    PositiveMoney:
+      description: '"0.01" to "1000000000.00"; more than two decimals is rejected, never rounded'
+      type: string
+      pattern: '^(0|[1-9][0-9]*)\.[0-9]{2}$'
+    CreateGroup:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        members:
+          description: |
+            Optional initial member names (trimmed, unique case-insensitively, max 20).
+            Any invalid or duplicate name rejects the whole request (field "members").
+          type: array
+          maxItems: 20
+          default: []
+          items: { type: string, minLength: 1, maxLength: 100 }
+    CreateMember:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+    CreateExpense:
+      type: object
+      required: [payer_id, amount, description, participant_ids]
+      additionalProperties: false
+      properties:
+        payer_id: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/PositiveMoney' }
+        description: { type: string, minLength: 1, maxLength: 200 }
+        participant_ids:
+          description: Distinct member IDs; order determines who receives leftover cents
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, format: uuid }
+    Group:
+      type: object
+      required: [id, name, members]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        members:
+          type: array
+          items: { $ref: '#/components/schemas/Member' }
+    Member:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    Share:
+      type: object
+      required: [member_id, amount]
+      properties:
+        member_id: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/Money' }
+    Expense:
+      type: object
+      required: [id, payer_id, amount, description, shares, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        payer_id: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/Money' }
+        description: { type: string }
+        shares:
+          type: array
+          items: { $ref: '#/components/schemas/Share' }
+        created_at: { type: string, format: date-time }
+    Balance:
+      type: object
+      required: [member_id, name, balance]
+      properties:
+        member_id: { type: string, format: uuid }
+        name: { type: string }
+        balance: { $ref: '#/components/schemas/Money' }
+    Transfer:
+      type: object
+      required: [from_member_id, to_member_id, amount]
+      properties:
+        from_member_id: { type: string, format: uuid }
+        to_member_id: { type: string, format: uuid }
+        amount: { $ref: '#/components/schemas/Money' }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [not_found, duplicate_member_name, validation_error]
+            message: { type: string }
+            field:
+              description: Offending request field, when applicable
+              type: string
