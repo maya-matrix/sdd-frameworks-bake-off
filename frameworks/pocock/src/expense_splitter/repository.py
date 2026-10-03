@@ -162,3 +162,15 @@ class Repository:
             (group_id,),
         ).fetchall()
         return [Payment(**row) for row in rows]
+
+    def delete_expense(self, group_id: str, expense_id: str) -> bool:
+        cursor = self.conn.execute(
+            "DELETE FROM expenses WHERE group_id = ? AND id = ?", (group_id, expense_id)
+        )
+        return cursor.rowcount == 1
+
+    def delete_payment(self, group_id: str, payment_id: str) -> bool:
+        cursor = self.conn.execute(
+            "DELETE FROM payments WHERE group_id = ? AND id = ?", (group_id, payment_id)
+        )
+        return cursor.rowcount == 1

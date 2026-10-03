@@ -156,6 +156,10 @@ def create_app(db_path: Path | str) -> FastAPI:
     def list_expenses(group_id: str, service: ServiceDep) -> list[ExpenseOut]:
         return [ExpenseOut.of(v) for v in service.list_expenses(group_id)]
 
+    @app.delete("/groups/{group_id}/expenses/{expense_id}", status_code=204)
+    def delete_expense(group_id: str, expense_id: str, service: ServiceDep) -> None:
+        service.delete_expense(group_id, expense_id)
+
     @app.post("/groups/{group_id}/payments", status_code=201)
     def record_payment(group_id: str, body: RecordPaymentBody, service: ServiceDep) -> PaymentOut:
         return PaymentOut.of(
@@ -165,6 +169,10 @@ def create_app(db_path: Path | str) -> FastAPI:
     @app.get("/groups/{group_id}/payments")
     def list_payments(group_id: str, service: ServiceDep) -> list[PaymentOut]:
         return [PaymentOut.of(p) for p in service.list_payments(group_id)]
+
+    @app.delete("/groups/{group_id}/payments/{payment_id}", status_code=204)
+    def delete_payment(group_id: str, payment_id: str, service: ServiceDep) -> None:
+        service.delete_payment(group_id, payment_id)
 
     @app.get("/groups/{group_id}/balances")
     def balances(group_id: str, service: ServiceDep) -> list[BalanceOut]:

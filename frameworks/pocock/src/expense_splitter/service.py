@@ -104,6 +104,16 @@ class Service:
         self._require_group(group_id)
         return self.repo.list_payments(group_id)
 
+    def delete_expense(self, group_id: str, expense_id: str) -> None:
+        self._require_group(group_id)
+        if not self.repo.delete_expense(group_id, expense_id):
+            raise NotFound("Expense not found")
+
+    def delete_payment(self, group_id: str, payment_id: str) -> None:
+        self._require_group(group_id)
+        if not self.repo.delete_payment(group_id, payment_id):
+            raise NotFound("Payment not found")
+
     def balances(self, group_id: str) -> list[tuple[Member, int]]:
         """Every current Member's Balance, in join order. Positive means they are owed."""
         self._require_group(group_id)
