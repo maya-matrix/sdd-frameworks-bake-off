@@ -81,3 +81,65 @@ def test_get_unknown_group_is_not_found(client: TestClient) -> None:
 
 def test_unknown_route_uses_error_shape(client: TestClient) -> None:
     assert_error(client.get("/nope"), 404, "NOT_FOUND")
+
+
+# --- members ------------------------------------------------------------------------------
+
+
+def create_group(client: TestClient, name: str = "Trip") -> str:
+    group_id: str = client.post("/groups", json={"name": name}).json()["id"]
+    return group_id
+
+
+def test_add_member_returns_member(client: TestClient) -> None:
+    group_id = create_group(client)
+
+    response = client.post(f"/groups/{group_id}/members", json={"name": "  Ana "})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert set(body) == {"id", "name"}
+    assert body["name"] == "Ana"
+
+
+def test_group_lists_members_in_join_order(client: TestClient) -> None:
+    group_id = create_group(client)
+    added = [
+        client.post(f"/groups/{group_id}/members", json={"name": name}).json()
+        for name in ["Zed", "Ana", "Bo"]
+    ]
+
+    group = client.get(f"/groups/{group_id}").json()
+
+    assert group["members"] == added
+
+
+def test_duplicate_member_name_conflicts_ignoring_case(client: TestClient) -> None:
+    group_id = create_group(client)
+    client.post(f"/groups/{group_id}/members", json={"name": "Ana"})
+
+    response = client.post(f"/groups/{group_id}/members", json={"name": "ana"})
+
+    assert_error(response, 409, "DUPLICATE_MEMBER")
+
+
+def test_same_member_name_allowed_in_another_group(client: TestClient) -> None:
+    first, second = create_group(client, "Trip"), create_group(client, "Flat")
+    client.post(f"/groups/{first}/members", json={"name": "Ana"})
+
+    response = client.post(f"/groups/{second}/members", json={"name": "Ana"})
+
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize("body", [{}, {"name": ""}, {"name": " "}, {"name": "x" * 101}])
+def test_add_member_rejects_invalid_name(client: TestClient, body: dict[str, object]) -> None:
+    group_id = create_group(client)
+
+    assert_error(client.post(f"/groups/{group_id}/members", json=body), 400, "VALIDATION_ERROR")
+
+
+def test_add_member_to_unknown_group_is_not_found(client: TestClient) -> None:
+    response = client.post("/groups/missing/members", json={"name": "Ana"})
+
+    assert_error(response, 404, "GROUP_NOT_FOUND")

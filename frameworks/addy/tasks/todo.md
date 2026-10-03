@@ -87,13 +87,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `src/expense_splitter/schemas.py`, `src/expense_splitter/errors.py`, `src/expense_splitter/main.py`, `tests/conftest.py`, `tests/test_api.py`
 **Scope:** M
 
-### Task 6: Add-member endpoint
+### Task 6: Add-member endpoint ✅
 **Description:** `POST /groups/{group_id}/members`; members appear in `GET /groups/{id}` in join order.
 
 **Acceptance criteria:**
-- [ ] 201 `{id, name}`; the name is trimmed; members are listed in join order on the group
-- [ ] Duplicate name (case-insensitive, e.g. "Ana" vs "ana") → 409 `DUPLICATE_MEMBER`; invalid name → 400; unknown group → 404
-- [ ] The same name in two different groups is allowed
+- [x] 201 `{id, name}`; the name is trimmed; members are listed in join order on the group
+- [x] Duplicate name (case-insensitive, e.g. "Ana" vs "ana") → 409 `DUPLICATE_MEMBER`; invalid name → 400; unknown group → 404
+- [x] The same name in two different groups is allowed
 
 **Verification:** `uv run pytest tests/test_api.py -k member`
 

@@ -12,7 +12,12 @@ from fastapi import Depends, FastAPI
 from expense_splitter import repository
 from expense_splitter.db import connect, init_schema
 from expense_splitter.errors import ApiError, register_error_handlers
-from expense_splitter.schemas import CreateGroupRequest, GroupResponse, MemberResponse
+from expense_splitter.schemas import (
+    AddMemberRequest,
+    CreateGroupRequest,
+    GroupResponse,
+    MemberResponse,
+)
 
 
 def create_app(db_path: str | Path) -> FastAPI:
@@ -58,6 +63,17 @@ def create_app(db_path: str | Path) -> FastAPI:
     @app.get("/groups/{group_id}")
     def get_group(group_id: str, conn: Conn) -> GroupResponse:
         return group_response(conn, require_group(conn, group_id))
+
+    @app.post("/groups/{group_id}/members", status_code=201)
+    def add_member(group_id: str, body: AddMemberRequest, conn: Conn) -> MemberResponse:
+        require_group(conn, group_id)
+        try:
+            member = repository.add_member(conn, group_id, body.name)
+        except repository.DuplicateMemberError:
+            raise ApiError(
+                409, "DUPLICATE_MEMBER", f"a member named {body.name!r} already exists"
+            ) from None
+        return MemberResponse(id=member.id, name=member.name)
 
     return app
 

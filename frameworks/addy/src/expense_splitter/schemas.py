@@ -18,6 +18,10 @@ class CreateGroupRequest(CamelModel):
     currency: Currency = "EUR"
 
 
+class AddMemberRequest(CamelModel):
+    name: Name
+
+
 class MemberResponse(CamelModel):
     id: str
     name: str
