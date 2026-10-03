@@ -22,13 +22,13 @@ Every task also meets the standing Definition of Done: tests are written first a
 **Files:** `pyproject.toml`, `.gitignore`, `src/expense_splitter/__init__.py`, `src/expense_splitter/money.py`, `tests/test_money.py`
 **Scope:** S
 
-### Task 2: Equal split + balances
+### Task 2: Equal split + balances ✅
 **Description:** `split.split_equally(total, member_ids) -> list[tuple[str, int]]` (order-preserving, remainder to first members) and `balances.compute_balances(member_ids, expenses) -> dict[str, int]`, where each expense is (payer, shares).
 
 **Acceptance criteria:**
-- [ ] 1000 / [a,b,c] → 334, 333, 333; 1 / [a,b,c] → 1, 0, 0; 10000 / 7 sums to 10000; empty member list raises `ValueError`
-- [ ] Balances include every member (zeros too); the payer gets credited even when not in the split
-- [ ] Hypothesis: shares always sum to the total and differ by at most 1; Σ balances == 0 for random expense lists
+- [x] 1000 / [a,b,c] → 334, 333, 333; 1 / [a,b,c] → 1, 0, 0; 10000 / 7 sums to 10000; empty member list raises `ValueError`
+- [x] Balances include every member (zeros too); the payer gets credited even when not in the split
+- [x] Hypothesis: shares always sum to the total and differ by at most 1; Σ balances == 0 for random expense lists
 
 **Verification:** `uv run pytest tests/test_split.py tests/test_balances.py`; 100% coverage on `split.py`
 
