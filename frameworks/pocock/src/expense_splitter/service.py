@@ -90,6 +90,23 @@ class Service:
         self._require_group(group_id)
         return [ExpenseView.of(e) for e in self.repo.list_expenses(group_id)]
 
+    def balances(self, group_id: str) -> list[tuple[Member, int]]:
+        """Every current Member's Balance, in join order. Positive means they are owed."""
+        self._require_group(group_id)
+        balances = self._all_balances(group_id)
+        return [
+            (m, balances[m.id]) for m in self.repo.list_members(group_id) if m.departed_at is None
+        ]
+
+    def _all_balances(self, group_id: str) -> dict[str, int]:
+        """Balances of every Member, including Departed Members."""
+        balances = {m.id: 0 for m in self.repo.list_members(group_id)}
+        for expense in self.repo.list_expenses(group_id):
+            balances[expense.payer_id] += expense.amount
+            for member_id, share in split_equally(expense.amount, expense.participant_ids):
+                balances[member_id] -= share
+        return balances
+
     def _current_member_ids(self, group_id: str) -> set[str]:
         return {m.id for m in self.repo.list_members(group_id) if m.departed_at is None}
 

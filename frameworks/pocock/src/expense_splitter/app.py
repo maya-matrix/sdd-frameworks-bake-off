@@ -78,6 +78,12 @@ class ExpenseOut(BaseModel):
         )
 
 
+class BalanceOut(BaseModel):
+    member_id: str
+    name: str
+    balance: int
+
+
 _STATUS = {NotFound: 404, Invalid: 422, Conflict: 409}
 
 
@@ -118,5 +124,12 @@ def create_app(db_path: Path | str) -> FastAPI:
     @app.get("/groups/{group_id}/expenses")
     def list_expenses(group_id: str, service: ServiceDep) -> list[ExpenseOut]:
         return [ExpenseOut.of(v) for v in service.list_expenses(group_id)]
+
+    @app.get("/groups/{group_id}/balances")
+    def balances(group_id: str, service: ServiceDep) -> list[BalanceOut]:
+        return [
+            BalanceOut(member_id=m.id, name=m.name, balance=b)
+            for m, b in service.balances(group_id)
+        ]
 
     return app
