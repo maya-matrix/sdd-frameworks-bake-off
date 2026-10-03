@@ -44,7 +44,7 @@ class Service:
         self._require_group(group_id)
         return self._add_member(group_id, name)
 
-    def remove_member(self, group_id: str, member_id: str) -> None:
+    def depart_member(self, group_id: str, member_id: str) -> None:
         """The Member leaves the Group and becomes a Departed Member."""
         self._require_group(group_id)
         if member_id not in self._current_member_ids(group_id):

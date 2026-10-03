@@ -103,14 +103,14 @@ class PaymentOut(BaseModel):
         )
 
 
-class TransferOut(BaseModel):
+class SuggestedTransferOut(BaseModel):
     from_id: str
     to_id: str
     amount: int
 
 
 class SettleUpOut(BaseModel):
-    transfers: list[TransferOut]
+    transfers: list[SuggestedTransferOut]
     optimal: bool
 
 
@@ -150,9 +150,9 @@ def create_app(db_path: Path | str) -> FastAPI:
             return MemberOut(id=member.id, name=member.name)
 
     @app.delete("/groups/{group_id}/members/{member_id}", status_code=204)
-    def remove_member(group_id: str, member_id: str) -> None:
+    def depart_member(group_id: str, member_id: str) -> None:
         with unit_of_work() as service:
-            service.remove_member(group_id, member_id)
+            service.depart_member(group_id, member_id)
 
     @app.post("/groups/{group_id}/expenses", status_code=201)
     def record_expense(group_id: str, body: RecordExpenseBody) -> ExpenseOut:
@@ -203,7 +203,7 @@ def create_app(db_path: Path | str) -> FastAPI:
             result = service.settle_up(group_id)
             return SettleUpOut(
                 transfers=[
-                    TransferOut(from_id=t.from_id, to_id=t.to_id, amount=t.amount)
+                    SuggestedTransferOut(from_id=t.from_id, to_id=t.to_id, amount=t.amount)
                     for t in result.transfers
                 ],
                 optimal=result.optimal,

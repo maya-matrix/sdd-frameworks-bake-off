@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from expense_splitter.settle_up import EXACT_LIMIT, Transfer, settle_up
+from expense_splitter.settle_up import EXACT_LIMIT, SuggestedTransfer, settle_up
 
 
 def test_nothing_to_settle_when_everyone_is_at_zero() -> None:
@@ -14,14 +14,14 @@ def test_nothing_to_settle_when_everyone_is_at_zero() -> None:
     assert result.optimal is True
 
 
-def test_one_debtor_pays_one_creditor() -> None:
+def test_one_member_owing_pays_the_one_owed() -> None:
     result = settle_up([("a", 500), ("b", -500)])
 
-    assert result.transfers == [Transfer(from_id="b", to_id="a", amount=500)]
+    assert result.transfers == [SuggestedTransfer(from_id="b", to_id="a", amount=500)]
     assert result.optimal is True
 
 
-def apply(balances: list[tuple[str, int]], transfers: list[Transfer]) -> dict[str, int]:
+def apply(balances: list[tuple[str, int]], transfers: list[SuggestedTransfer]) -> dict[str, int]:
     remaining = dict(balances)
     for t in transfers:
         remaining[t.from_id] += t.amount
@@ -39,7 +39,7 @@ def test_finds_the_minimum_where_greedy_would_not() -> None:
     assert len(result.transfers) == 4
     assert result.optimal is True
     assert set(apply(balances, result.transfers).values()) == {0}
-    assert Transfer(from_id="a", to_id="c", amount=9) in result.transfers
+    assert SuggestedTransfer(from_id="a", to_id="c", amount=9) in result.transfers
 
 
 def balances_summing_to_zero(
@@ -80,7 +80,7 @@ def brute_force_minimum_transfers(balances: list[tuple[str, int]]) -> int:
 
 
 def check_transfers_are_well_formed(
-    balances: list[tuple[str, int]], transfers: list[Transfer]
+    balances: list[tuple[str, int]], transfers: list[SuggestedTransfer]
 ) -> None:
     ids = {member_id for member_id, _ in balances}
     for t in transfers:

@@ -9,7 +9,7 @@ EXACT_LIMIT = 16
 
 
 @dataclass(frozen=True)
-class Transfer:
+class SuggestedTransfer:
     from_id: str
     to_id: str
     amount: int
@@ -17,7 +17,7 @@ class Transfer:
 
 @dataclass(frozen=True)
 class SettleUpResult:
-    transfers: list[Transfer]
+    transfers: list[SuggestedTransfer]
     optimal: bool
 
 
@@ -43,13 +43,13 @@ def _zero_sum_groups(balances: Sequence[tuple[str, int]]) -> list[list[tuple[str
     """
     n = len(balances)
     size = 1 << n
-    total = [0] * size
+    balance_sum = [0] * size
     best = [0] * size
     for mask in range(1, size):
         low = (mask & -mask).bit_length() - 1
-        total[mask] = total[mask ^ (1 << low)] + balances[low][1]
+        balance_sum[mask] = balance_sum[mask ^ (1 << low)] + balances[low][1]
         best[mask] = max(best[mask ^ (1 << i)] for i in range(n) if mask >> i & 1) + (
-            total[mask] == 0
+            balance_sum[mask] == 0
         )
 
     # Walk back from the full set, peeling off one Member at a time along an optimal
@@ -59,27 +59,27 @@ def _zero_sum_groups(balances: Sequence[tuple[str, int]]) -> list[list[tuple[str
     mask = size - 1
     current: list[int] = []
     while mask:
-        target = best[mask] - (total[mask] == 0)
+        target = best[mask] - (balance_sum[mask] == 0)
         i = next(i for i in range(n) if mask >> i & 1 and best[mask ^ (1 << i)] == target)
         current.append(i)
         mask ^= 1 << i
-        if total[mask] == 0:
+        if balance_sum[mask] == 0:
             groups.append([balances[j] for j in sorted(current)])
             current = []
     groups.reverse()
     return groups
 
 
-def _greedy(balances: Sequence[tuple[str, int]]) -> list[Transfer]:
-    """Repeatedly match the largest debtor with the largest creditor (ties: stable order)."""
+def _greedy(balances: Sequence[tuple[str, int]]) -> list[SuggestedTransfer]:
+    """Repeatedly match the Member owing the most with the Member owed the most (ties: stable order)."""
     remaining = {member_id: balance for member_id, balance in balances}
     rank = {member_id: i for i, (member_id, _) in enumerate(balances)}
-    transfers: list[Transfer] = []
+    transfers: list[SuggestedTransfer] = []
     while any(remaining.values()):
-        creditor = max(remaining, key=lambda m: (remaining[m], -rank[m]))
-        debtor = min(remaining, key=lambda m: (remaining[m], rank[m]))
-        amount = min(remaining[creditor], -remaining[debtor])
-        transfers.append(Transfer(from_id=debtor, to_id=creditor, amount=amount))
-        remaining[creditor] -= amount
-        remaining[debtor] += amount
+        most_owed = max(remaining, key=lambda m: (remaining[m], -rank[m]))
+        most_owing = min(remaining, key=lambda m: (remaining[m], rank[m]))
+        amount = min(remaining[most_owed], -remaining[most_owing])
+        transfers.append(SuggestedTransfer(from_id=most_owing, to_id=most_owed, amount=amount))
+        remaining[most_owed] -= amount
+        remaining[most_owing] += amount
     return transfers
