@@ -21,6 +21,18 @@ class Member:
     departed_at: str | None
 
 
+@dataclass(frozen=True)
+class Expense:
+    id: str
+    group_id: str
+    payer_id: str
+    amount: int
+    description: str
+    created_at: str
+    participant_ids: list[str]
+    """In the Participants' join order."""
+
+
 def _new_id() -> str:
     return str(uuid.uuid4())
 
@@ -72,3 +84,46 @@ class Repository:
             (group_id,),
         ).fetchall()
         return [Member(**row) for row in rows]
+
+    def insert_expense(
+        self,
+        group_id: str,
+        payer_id: str,
+        amount: int,
+        description: str,
+        participant_ids: list[str],
+    ) -> str:
+        expense_id = _new_id()
+        self.conn.execute(
+            "INSERT INTO expenses (id, group_id, payer_id, amount, description, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (expense_id, group_id, payer_id, amount, description, _now()),
+        )
+        self.conn.executemany(
+            "INSERT INTO expense_participants (expense_id, member_id) VALUES (?, ?)",
+            [(expense_id, member_id) for member_id in participant_ids],
+        )
+        return expense_id
+
+    def list_expenses(self, group_id: str, expense_id: str | None = None) -> list[Expense]:
+        """The Group's Expenses in the order they were recorded (optionally just one)."""
+        query = (
+            "SELECT id, group_id, payer_id, amount, description, created_at FROM expenses"
+            " WHERE group_id = ?"
+        )
+        params: tuple[str, ...] = (group_id,)
+        if expense_id is not None:
+            query += " AND id = ?"
+            params += (expense_id,)
+        rows = self.conn.execute(query + " ORDER BY rowid", params).fetchall()
+        participants: dict[str, list[str]] = {row["id"]: [] for row in rows}
+        for p in self.conn.execute(
+            "SELECT ep.expense_id, ep.member_id FROM expense_participants ep"
+            " JOIN expenses e ON e.id = ep.expense_id"
+            " JOIN members m ON m.id = ep.member_id"
+            " WHERE e.group_id = ? ORDER BY m.join_order",
+            (group_id,),
+        ):
+            if p["expense_id"] in participants:
+                participants[p["expense_id"]].append(p["member_id"])
+        return [Expense(**row, participant_ids=participants[row["id"]]) for row in rows]

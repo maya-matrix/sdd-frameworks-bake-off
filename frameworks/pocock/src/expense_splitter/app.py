@@ -4,12 +4,12 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictInt
 
 from expense_splitter.db import Database
 from expense_splitter.errors import Conflict, DomainError, Invalid, NotFound
 from expense_splitter.repository import Repository
-from expense_splitter.service import GroupView, Service
+from expense_splitter.service import ExpenseView, GroupView, Service
 
 
 class CreateGroupBody(BaseModel):
@@ -45,6 +45,39 @@ class GroupOut(BaseModel):
         )
 
 
+class RecordExpenseBody(BaseModel):
+    payer_id: str
+    amount: StrictInt
+    description: str
+    participant_ids: list[str]
+
+
+class ShareOut(BaseModel):
+    member_id: str
+    amount: int
+
+
+class ExpenseOut(BaseModel):
+    id: str
+    payer_id: str
+    amount: int
+    description: str
+    created_at: str
+    shares: list[ShareOut]
+
+    @classmethod
+    def of(cls, view: ExpenseView) -> "ExpenseOut":
+        e = view.expense
+        return cls(
+            id=e.id,
+            payer_id=e.payer_id,
+            amount=e.amount,
+            description=e.description,
+            created_at=e.created_at,
+            shares=[ShareOut(member_id=m, amount=a) for m, a in view.shares],
+        )
+
+
 _STATUS = {NotFound: 404, Invalid: 422, Conflict: 409}
 
 
@@ -74,5 +107,16 @@ def create_app(db_path: Path | str) -> FastAPI:
     def add_member(group_id: str, body: AddMemberBody, service: ServiceDep) -> MemberOut:
         member = service.add_member(group_id, body.name)
         return MemberOut(id=member.id, name=member.name)
+
+    @app.post("/groups/{group_id}/expenses", status_code=201)
+    def record_expense(group_id: str, body: RecordExpenseBody, service: ServiceDep) -> ExpenseOut:
+        view = service.record_expense(
+            group_id, body.payer_id, body.amount, body.description, body.participant_ids
+        )
+        return ExpenseOut.of(view)
+
+    @app.get("/groups/{group_id}/expenses")
+    def list_expenses(group_id: str, service: ServiceDep) -> list[ExpenseOut]:
+        return [ExpenseOut.of(v) for v in service.list_expenses(group_id)]
 
     return app

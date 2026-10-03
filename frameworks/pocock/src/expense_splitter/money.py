@@ -9,3 +9,19 @@ SUPPORTED_CURRENCIES = frozenset(
         "THB", "TRY", "USD", "ZAR",
     }
 )  # fmt: skip
+
+# Largest Amount we can store exactly (SQLite INTEGER is a signed 64-bit value).
+MAX_AMOUNT = 2**63 - 1
+
+
+def split_equally(amount: int, participant_ids: list[str]) -> list[tuple[str, int]]:
+    """Split an Amount into whole-minor-unit Shares that add up exactly to it.
+
+    `participant_ids` must already be in join order: the Remainder goes one minor unit
+    each to the earliest-joined Participants (ADR 0002).
+    """
+    base, remainder = divmod(amount, len(participant_ids))
+    return [
+        (member_id, base + (1 if i < remainder else 0))
+        for i, member_id in enumerate(participant_ids)
+    ]
