@@ -33,6 +33,16 @@ class Expense:
     """In the Participants' join order."""
 
 
+@dataclass(frozen=True)
+class Payment:
+    id: str
+    group_id: str
+    from_id: str
+    to_id: str
+    amount: int
+    created_at: str
+
+
 def _new_id() -> str:
     return str(uuid.uuid4())
 
@@ -127,3 +137,28 @@ class Repository:
             if p["expense_id"] in participants:
                 participants[p["expense_id"]].append(p["member_id"])
         return [Expense(**row, participant_ids=participants[row["id"]]) for row in rows]
+
+    def insert_payment(self, group_id: str, from_id: str, to_id: str, amount: int) -> Payment:
+        payment = Payment(
+            id=_new_id(),
+            group_id=group_id,
+            from_id=from_id,
+            to_id=to_id,
+            amount=amount,
+            created_at=_now(),
+        )
+        self.conn.execute(
+            "INSERT INTO payments (id, group_id, from_id, to_id, amount, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (payment.id, group_id, from_id, to_id, amount, payment.created_at),
+        )
+        return payment
+
+    def list_payments(self, group_id: str) -> list[Payment]:
+        """The Group's Payments in the order they were recorded."""
+        rows = self.conn.execute(
+            "SELECT id, group_id, from_id, to_id, amount, created_at FROM payments"
+            " WHERE group_id = ? ORDER BY rowid",
+            (group_id,),
+        ).fetchall()
+        return [Payment(**row) for row in rows]

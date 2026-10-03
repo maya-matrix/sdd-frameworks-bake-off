@@ -8,7 +8,7 @@ from pydantic import BaseModel, StrictInt
 
 from expense_splitter.db import Database
 from expense_splitter.errors import Conflict, DomainError, Invalid, NotFound
-from expense_splitter.repository import Repository
+from expense_splitter.repository import Payment, Repository
 from expense_splitter.service import ExpenseView, GroupView, Service
 
 
@@ -84,6 +84,26 @@ class BalanceOut(BaseModel):
     balance: int
 
 
+class RecordPaymentBody(BaseModel):
+    from_id: str
+    to_id: str
+    amount: StrictInt
+
+
+class PaymentOut(BaseModel):
+    id: str
+    from_id: str
+    to_id: str
+    amount: int
+    created_at: str
+
+    @classmethod
+    def of(cls, p: Payment) -> "PaymentOut":
+        return cls(
+            id=p.id, from_id=p.from_id, to_id=p.to_id, amount=p.amount, created_at=p.created_at
+        )
+
+
 _STATUS = {NotFound: 404, Invalid: 422, Conflict: 409}
 
 
@@ -124,6 +144,16 @@ def create_app(db_path: Path | str) -> FastAPI:
     @app.get("/groups/{group_id}/expenses")
     def list_expenses(group_id: str, service: ServiceDep) -> list[ExpenseOut]:
         return [ExpenseOut.of(v) for v in service.list_expenses(group_id)]
+
+    @app.post("/groups/{group_id}/payments", status_code=201)
+    def record_payment(group_id: str, body: RecordPaymentBody, service: ServiceDep) -> PaymentOut:
+        return PaymentOut.of(
+            service.record_payment(group_id, body.from_id, body.to_id, body.amount)
+        )
+
+    @app.get("/groups/{group_id}/payments")
+    def list_payments(group_id: str, service: ServiceDep) -> list[PaymentOut]:
+        return [PaymentOut.of(p) for p in service.list_payments(group_id)]
 
     @app.get("/groups/{group_id}/balances")
     def balances(group_id: str, service: ServiceDep) -> list[BalanceOut]:

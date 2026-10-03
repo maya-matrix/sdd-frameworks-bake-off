@@ -4,15 +4,15 @@
 
 **Blocked by:** 04 (Balances)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `POST /groups/{id}/payments` with `{from_id, to_id, amount}` returns 201 with the Payment (id, from_id, to_id, amount, created_at).
-- [ ] `GET /groups/{id}/payments` lists the Group's Payments.
-- [ ] Example: after B (−333) pays A 333, B's Balance is 0 and A's goes down by 333.
-- [ ] Overpaying is allowed: the Balances simply flip sign.
-- [ ] 422 for:
+- [x] `POST /groups/{id}/payments` with `{from_id, to_id, amount}` returns 201 with the Payment (id, from_id, to_id, amount, created_at).
+- [x] `GET /groups/{id}/payments` lists the Group's Payments.
+- [x] Example: after B (−333) pays A 333, B's Balance is 0 and A's goes down by 333.
+- [x] Overpaying is allowed: the Balances simply flip sign.
+- [x] 422 for:
   - `from_id` equal to `to_id`;
   - an Amount that is not a positive integer;
   - a sender or recipient that isn't a Member of this Group.
-- [ ] An unknown Group returns 404.
-- [ ] After any mix of Expenses and Payments, the Balances still add up to exactly zero.
+- [x] An unknown Group returns 404.
+- [x] After any mix of Expenses and Payments, the Balances still add up to exactly zero.

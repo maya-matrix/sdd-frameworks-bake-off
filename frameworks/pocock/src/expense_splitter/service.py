@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from expense_splitter.errors import Conflict, Invalid, NotFound
 from expense_splitter.money import MAX_AMOUNT, SUPPORTED_CURRENCIES, split_equally
-from expense_splitter.repository import Expense, Group, Member, Repository
+from expense_splitter.repository import Expense, Group, Member, Payment, Repository
 
 
 @dataclass(frozen=True)
@@ -90,6 +90,19 @@ class Service:
         self._require_group(group_id)
         return [ExpenseView.of(e) for e in self.repo.list_expenses(group_id)]
 
+    def record_payment(self, group_id: str, from_id: str, to_id: str, amount: int) -> Payment:
+        self._require_group(group_id)
+        _check_amount(amount)
+        if from_id == to_id:
+            raise Invalid("A Member cannot pay themselves")
+        if not {from_id, to_id} <= self._current_member_ids(group_id):
+            raise Invalid("Sender and recipient must be Members of this Group")
+        return self.repo.insert_payment(group_id, from_id, to_id, amount)
+
+    def list_payments(self, group_id: str) -> list[Payment]:
+        self._require_group(group_id)
+        return self.repo.list_payments(group_id)
+
     def balances(self, group_id: str) -> list[tuple[Member, int]]:
         """Every current Member's Balance, in join order. Positive means they are owed."""
         self._require_group(group_id)
@@ -105,6 +118,9 @@ class Service:
             balances[expense.payer_id] += expense.amount
             for member_id, share in split_equally(expense.amount, expense.participant_ids):
                 balances[member_id] -= share
+        for payment in self.repo.list_payments(group_id):
+            balances[payment.from_id] += payment.amount
+            balances[payment.to_id] -= payment.amount
         return balances
 
     def _current_member_ids(self, group_id: str) -> set[str]:
