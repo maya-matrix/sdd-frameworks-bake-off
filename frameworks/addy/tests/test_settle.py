@@ -130,6 +130,18 @@ def test_fallback_above_exact_limit_still_clears_all_debts() -> None:
     assert len(transfers) <= len(balances) - 1
 
 
+def test_exactly_exact_limit_balances_still_get_the_minimum() -> None:
+    # In-order matching settles this in 15 transfers; the minimum is 10 (+3/-3 and +5/-5 pairs).
+    balances = [(f"m{i}", v) for i, v in enumerate([3, 5, -5, -3] * (EXACT_LIMIT // 4))]
+    assert len(balances) == EXACT_LIMIT
+
+    transfers = settle_up(balances)
+
+    assert_valid_settlement(balances, transfers)
+    assert len(transfers) == EXACT_LIMIT // 2
+    assert len(settle_up(balances, exact_limit=EXACT_LIMIT - 1)) > len(transfers)
+
+
 @pytest.mark.parametrize(
     ("values", "expected_transfers"),
     [
