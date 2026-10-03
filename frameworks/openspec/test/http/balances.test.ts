@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { parseAmount } from "../../src/domain/money.js";
-import { balancesByName, createGroup, newApp, recordExpense, type TestGroup } from "./helpers.js";
+import { balancesByName, createGroup, newApp, postExpense, recordExpense, type TestGroup } from "./helpers.js";
 
 let app: FastifyInstance;
 let group: TestGroup;
@@ -82,5 +82,65 @@ describe("GET /groups/:groupId/balances", () => {
       url: "/groups/00000000-0000-4000-8000-000000000000/balances",
     });
     expect(response.statusCode).toBe(404);
+  });
+});
+
+describe("balances with unequal splits", () => {
+  async function recordUnequal() {
+    const exact = await postExpense(app, group.id, {
+      payerId: group.ids.Alice,
+      amount: "10.00",
+      description: "Dinner",
+      splitType: "exact",
+      splits: [
+        { memberId: group.ids.Alice, amount: "6.00" },
+        { memberId: group.ids.Bob, amount: "2.50" },
+        { memberId: group.ids.Carol, amount: "1.50" },
+      ],
+    });
+    const percentage = await postExpense(app, group.id, {
+      payerId: group.ids.Bob,
+      amount: "10.00",
+      description: "Taxi",
+      splitType: "percentage",
+      splits: [
+        { memberId: group.ids.Alice, percentage: "33.33" },
+        { memberId: group.ids.Bob, percentage: "33.33" },
+        { memberId: group.ids.Carol, percentage: "33.34" },
+      ],
+    });
+    expect([exact.statusCode, percentage.statusCode]).toEqual([201, 201]);
+  }
+
+  it("reflects exact and percentage shares and sums to zero", async () => {
+    await recordUnequal();
+    const balances = await balancesByName(app, group.id);
+    expect(balances).toEqual({ Alice: "0.67", Bob: "4.17", Carol: "-4.84", Dave: "0.00" });
+    expect(sumCents(Object.values(balances))).toBe(0n);
+  });
+
+  it("keeps the response format unchanged", async () => {
+    await recordExpense(app, group, "Carol", "9.00", ["Alice", "Bob", "Carol"]);
+    await recordUnequal();
+    const body = (await app.inject({ method: "GET", url: `/groups/${group.id}/balances` })).json();
+    expect(Object.keys(body)).toEqual(["balances"]);
+    expect(body.balances.map((b: { name: string }) => b.name)).toEqual(["Alice", "Bob", "Carol", "Dave"]);
+    for (const entry of body.balances) {
+      expect(Object.keys(entry).sort()).toEqual(["balance", "memberId", "name"]);
+    }
+  });
+
+  it("settle-up zeroes balances that came from unequal splits", async () => {
+    await recordUnequal();
+    const balances = await balancesByName(app, group.id);
+    const cents = Object.fromEntries(
+      Object.entries(balances).map(([name, v]) => [group.ids[name]!, sumCents([v])]),
+    );
+    const { transfers } = (await app.inject({ method: "GET", url: `/groups/${group.id}/settle-up` })).json();
+    for (const t of transfers as { from: string; to: string; amount: string }[]) {
+      cents[t.from] = cents[t.from]! + parseAmount(t.amount);
+      cents[t.to] = cents[t.to]! - parseAmount(t.amount);
+    }
+    expect(Object.values(cents).every((c) => c === 0n)).toBe(true);
   });
 });

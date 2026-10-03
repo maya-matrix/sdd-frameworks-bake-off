@@ -1,10 +1,6 @@
-# expense-recording Specification
+# Spec Delta
 
-## Purpose
-
-Lets members of a group record shared expenses — who paid, how much, for what, and which members share the cost equally — with exact money handling.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Record an expense
 The system SHALL allow a client to record an expense via `POST /groups/{groupId}/expenses` with `payerId`, `amount`, `description`, an optional `splitType` (`"equal"`, `"exact"` or `"percentage"`; default `"equal"`), and either `splitBetween` (a list of member ids, for `"equal"`) or `splits` (a list of per-member entries, for `"exact"` and `"percentage"`). On success it SHALL respond `201` with the expense's `id`, the submitted fields, its `splitType`, and each participant's computed `share`.
@@ -30,25 +26,6 @@ The system SHALL allow a client to record an expense via `POST /groups/{groupId}
 #### Scenario: Unknown group
 - **WHEN** a client records an expense for a group id that does not exist
 - **THEN** the response status is `404`
-
-### Requirement: Money amounts are exact decimal strings
-The system SHALL accept and return all money amounts as JSON strings matching `-?\d+(\.\d{1,2})?` (input amounts must not be negative), and SHALL perform all money arithmetic exactly in integer minor units (hundredths) with no floating-point rounding. Responses SHALL always format amounts with exactly two fraction digits.
-
-#### Scenario: Amount given as a JSON number
-- **WHEN** a client records an expense with `"amount": 12.5` (a number, not a string)
-- **THEN** the response status is `400`
-
-#### Scenario: Too many fraction digits
-- **WHEN** a client records an expense with `"amount": "10.005"`
-- **THEN** the response status is `400`
-
-#### Scenario: Normalized output format
-- **WHEN** a client records an expense with `"amount": "7.5"`
-- **THEN** the returned `amount` is `"7.50"`
-
-#### Scenario: Floating-point-prone values stay exact
-- **WHEN** Alice records `"0.10"` and then `"0.20"`, both split between Alice and Bob
-- **THEN** Bob's net balance is exactly `"-0.15"` and Alice's is exactly `"0.15"`
 
 ### Requirement: Expense validation
 The system SHALL reject an expense with status `400` and record nothing when: the amount is zero, negative, or above `1000000000.00`; the description is missing or blank after trimming; the payer or any participant is not a member of the group; or the participant list for the chosen split type is invalid. For `"equal"`, `splitBetween` SHALL be present, non-empty and free of duplicate ids, and `splits` SHALL be absent. For `"exact"` and `"percentage"`, `splits` SHALL be present, non-empty and free of duplicate `memberId`s, and `splitBetween` SHALL be absent.
@@ -89,22 +66,6 @@ The system SHALL reject an expense with status `400` and record nothing when: th
 - **WHEN** an `"exact"` expense's `splits` contains a `memberId` that is not a member of the group
 - **THEN** the response status is `400` and no expense is recorded
 
-### Requirement: Equal split with exact remainder allocation
-The system SHALL split an expense into shares that differ by at most one minor unit and sum exactly to the expense amount. When the amount does not divide evenly, the leftover minor units SHALL go one each to the first participants in the group's member order (the order members were added).
-
-#### Scenario: Uneven split
-- **WHEN** Alice, Bob and Carol (added in that order) share a `"10.00"` expense
-- **THEN** Alice's share is `"3.34"`, Bob's is `"3.33"` and Carol's is `"3.33"`
-- **AND** the shares sum to exactly `"10.00"`
-
-#### Scenario: Remainder order independent of request order
-- **WHEN** the same `"10.00"` expense is recorded with `splitBetween` listed as `[<Carol>, <Bob>, <Alice>]`
-- **THEN** Alice's share is still `"3.34"` and Bob's and Carol's are `"3.33"`
-
-#### Scenario: Amount smaller than participant count
-- **WHEN** `"0.02"` is split between Alice, Bob and Carol
-- **THEN** Alice's and Bob's shares are `"0.01"` and Carol's share is `"0.00"`
-
 ### Requirement: List expenses
 The system SHALL return all expenses of a group via `GET /groups/{groupId}/expenses`, in the order they were recorded, each including its `id`, `payerId`, `amount`, `description`, `splitType`, `splitBetween`, shares, and creation timestamp, plus the normalized `splits` for `"exact"` and `"percentage"` expenses. It SHALL respond `404` for an unknown group.
 
@@ -119,6 +80,8 @@ The system SHALL return all expenses of a group via `GET /groups/{groupId}/expen
 #### Scenario: No expenses
 - **WHEN** a group has no expenses
 - **THEN** `GET /groups/{groupId}/expenses` returns `200` with an empty list
+
+## ADDED Requirements
 
 ### Requirement: Exact-amount split
 For `"splitType": "exact"`, each `splits` entry SHALL be `{ "memberId", "amount" }` where `amount` is a non-negative money string (same format rules as the expense amount; zero allowed). Each participant's share SHALL equal its given amount, and the given amounts SHALL sum exactly to the expense amount; otherwise the system SHALL respond `400` and record nothing.

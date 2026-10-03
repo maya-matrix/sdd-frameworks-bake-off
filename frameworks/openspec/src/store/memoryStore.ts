@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ConflictError, NotFoundError, ValidationError } from "../domain/errors.js";
-import type { Cents } from "../domain/money.js";
-import { splitEqually, type Share } from "../domain/split.js";
+import { FULL_PERCENTAGE, type BasisPoints, type Cents } from "../domain/money.js";
+import { splitByPercentage, splitEqually, splitExact, type Share } from "../domain/split.js";
 
 export const MAX_EXPENSE_CENTS: Cents = 100_000_000_000n; // 1,000,000,000.00
 
@@ -17,13 +17,26 @@ export interface Group {
   members: Member[];
 }
 
+export type SplitType = "equal" | "exact" | "percentage";
+
+/** One participant of an unequal split: `amount` for "exact", `basisPoints` for "percentage". */
+export interface SplitInput {
+  memberId: string;
+  amount?: Cents;
+  basisPoints?: BasisPoints;
+}
+
 export interface Expense {
   id: string;
   groupId: string;
   payerId: string;
   amount: Cents;
   description: string;
+  splitType: SplitType;
+  /** Participant ids; for unequal splits, in the order they were listed in `splits`. */
   splitBetween: string[];
+  /** The submitted per-member values; only present for "exact" and "percentage". */
+  splits?: SplitInput[];
   shares: Share[];
   createdAt: string;
 }
@@ -32,7 +45,12 @@ export interface NewExpense {
   payerId: string;
   amount: Cents;
   description: string;
-  splitBetween: string[];
+  /** Defaults to "equal". */
+  splitType?: SplitType;
+  /** Participants of an "equal" split. */
+  splitBetween?: string[];
+  /** Participants of an "exact" or "percentage" split. */
+  splits?: SplitInput[];
 }
 
 export interface Repository {
@@ -103,16 +121,11 @@ export class MemoryStore implements Repository {
     if (!isMember.has(input.payerId)) {
       throw new ValidationError("Payer is not a member of this group");
     }
-    if (input.splitBetween.length === 0) {
-      throw new ValidationError("splitBetween must list at least one member");
-    }
-    if (new Set(input.splitBetween).size !== input.splitBetween.length) {
-      throw new ValidationError("splitBetween must not contain duplicate members");
-    }
-    const outsider = input.splitBetween.find((id) => !isMember.has(id));
-    if (outsider !== undefined) {
-      throw new ValidationError(`Participant ${outsider} is not a member of this group`);
-    }
+    const splitType = input.splitType ?? "equal";
+    const split =
+      splitType === "equal"
+        ? equalSplit(input, memberIds, isMember)
+        : unequalSplit(splitType, input, memberIds, isMember);
 
     const expense: Expense = {
       id: randomUUID(),
@@ -120,8 +133,8 @@ export class MemoryStore implements Repository {
       payerId: input.payerId,
       amount: input.amount,
       description,
-      splitBetween: [...input.splitBetween],
-      shares: splitEqually(input.amount, input.splitBetween, memberIds),
+      splitType,
+      ...split,
       createdAt: new Date().toISOString(),
     };
     record.expenses.push(expense);
@@ -141,6 +154,90 @@ export class MemoryStore implements Repository {
   }
 }
 
+type ResolvedSplit = Pick<Expense, "splitBetween" | "splits" | "shares">;
+
+function equalSplit(input: NewExpense, memberIds: string[], isMember: Set<string>): ResolvedSplit {
+  if (input.splits !== undefined) {
+    throw new ValidationError('splits is only allowed with splitType "exact" or "percentage"');
+  }
+  const splitBetween = input.splitBetween ?? [];
+  if (splitBetween.length === 0) {
+    throw new ValidationError("splitBetween must list at least one member");
+  }
+  if (new Set(splitBetween).size !== splitBetween.length) {
+    throw new ValidationError("splitBetween must not contain duplicate members");
+  }
+  const outsider = splitBetween.find((id) => !isMember.has(id));
+  if (outsider !== undefined) {
+    throw new ValidationError(`Participant ${outsider} is not a member of this group`);
+  }
+  return {
+    splitBetween: [...splitBetween],
+    shares: splitEqually(input.amount, splitBetween, memberIds),
+  };
+}
+
+function unequalSplit(
+  splitType: "exact" | "percentage",
+  input: NewExpense,
+  memberIds: string[],
+  isMember: Set<string>,
+): ResolvedSplit {
+  if (input.splitBetween !== undefined) {
+    throw new ValidationError(`splitBetween is not allowed with splitType "${splitType}"; use splits`);
+  }
+  const splits = input.splits ?? [];
+  if (splits.length === 0) {
+    throw new ValidationError("splits must list at least one member");
+  }
+  const ids = splits.map((s) => s.memberId);
+  if (new Set(ids).size !== ids.length) {
+    throw new ValidationError("splits must not contain duplicate members");
+  }
+  const outsider = ids.find((id) => !isMember.has(id));
+  if (outsider !== undefined) {
+    throw new ValidationError(`Participant ${outsider} is not a member of this group`);
+  }
+
+  if (splitType === "exact") {
+    const entries = splits.map(({ memberId, amount, basisPoints }) => {
+      if (amount === undefined || basisPoints !== undefined) {
+        throw new ValidationError("Each exact split must have an amount and no percentage");
+      }
+      if (amount < 0n) {
+        throw new ValidationError("Split amounts must not be negative");
+      }
+      return { memberId, amount };
+    });
+    if (entries.reduce((sum, e) => sum + e.amount, 0n) !== input.amount) {
+      throw new ValidationError("Split amounts must sum exactly to the expense amount");
+    }
+    return {
+      splitBetween: ids,
+      splits: entries.map((e) => ({ ...e })),
+      shares: splitExact(entries, memberIds),
+    };
+  }
+
+  const entries = splits.map(({ memberId, amount, basisPoints }) => {
+    if (basisPoints === undefined || amount !== undefined) {
+      throw new ValidationError("Each percentage split must have a percentage and no amount");
+    }
+    if (basisPoints < 0n || basisPoints > FULL_PERCENTAGE) {
+      throw new ValidationError("Percentages must be between 0 and 100");
+    }
+    return { memberId, basisPoints };
+  });
+  if (entries.reduce((sum, e) => sum + e.basisPoints, 0n) !== FULL_PERCENTAGE) {
+    throw new ValidationError("Percentages must sum exactly to 100");
+  }
+  return {
+    splitBetween: ids,
+    splits: entries.map((e) => ({ ...e })),
+    shares: splitByPercentage(input.amount, entries, memberIds),
+  };
+}
+
 function requireText(value: string, label: string): string {
   const trimmed = typeof value === "string" ? value.trim() : "";
   if (trimmed === "") {
@@ -157,6 +254,7 @@ function cloneExpense(expense: Expense): Expense {
   return {
     ...expense,
     splitBetween: [...expense.splitBetween],
+    ...(expense.splits && { splits: expense.splits.map((s) => ({ ...s })) }),
     shares: expense.shares.map((s) => ({ ...s })),
   };
 }
