@@ -1,0 +1,12 @@
+{
+  "name": "expense-splitter",
+  "version": "1.0.0",
+  "description": "Web API for splitting group expenses with exact money arithmetic",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}
